@@ -24,7 +24,7 @@ Results are saved for later review.
 ---
 
 ## Tech Stack
-- **App framework:** React Native (Bare / EAS Build)
+- **App framework:** Expo (Managed) + React Native
 - **Camera:** `react-native-vision-camera`
 - **OCR:** Google **ML Kit Text Recognition** (on-device)
 - **Translation:** Google Cloud Translation API
