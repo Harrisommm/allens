@@ -54,7 +54,7 @@ jobs:
         run: |
           set -eux
           for i in $(seq 1 30); do
-            if grep -q "Metro waiting on" expo.log; then
+            if grep -q "Waiting on http://localhost" expo.log || grep -q "Tunnel ready" expo.log; then
               exit 0
             fi
             if ! ps -p "$(cat expo.pid)" > /dev/null 2>&1; then
