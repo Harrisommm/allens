@@ -47,7 +47,7 @@ jobs:
       - name: Launch Expo dev server (background)
         run: |
           set -eux
-          pnpm exec expo start --offline --dev-client --non-interactive --max-workers 1 > expo.log 2>&1 &
+          CI=1 pnpm exec expo start --offline --dev-client --max-workers 1 > expo.log 2>&1 &
           echo $! > expo.pid
 
       - name: Wait for Expo to report ready state
