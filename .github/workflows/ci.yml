@@ -35,11 +35,8 @@ jobs:
           node-version: 20
           cache: pnpm
 
-      - name: Setup Expo CLI
-        uses: expo/expo-github-action@v8
-        with:
-          expo-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
+      - name: Authenticate Expo CLI
+        run: pnpm exec expo login --token ${{ secrets.EXPO_TOKEN }}
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -47,7 +44,7 @@ jobs:
       - name: Launch Expo dev server (background)
         run: |
           set -eux
-          expo start --offline --dev-client --non-interactive --max-workers 1 > expo.log 2>&1 &
+          pnpm exec expo start --offline --dev-client --non-interactive --max-workers 1 > expo.log 2>&1 &
           echo $! > expo.pid
 
       - name: Wait for Expo to report ready state
