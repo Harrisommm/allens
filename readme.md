@@ -112,4 +112,4 @@ pnpm run android
 ### Continuous Integration
 - GitHub Actions workflow (`.github/workflows/ci.yml`) runs pnpm install + TypeScript checks on every push/PR.
 - When `EXPO_TOKEN`, `EXPO_USERNAME`, `EXPO_PASSWORD` secrets are configured in the repo, the `eas-preview` job triggers `eas build --platform android --profile preview --non-interactive` to ship an APK artifact.
-- Extend the workflow with lint/tests (e.g., `pnpm run lint`, Jest) once those scripts exist.
+- Extend the workflow with lint/tests (e.g., `pnpm run lint`, Jest) once those scripts exist. 
