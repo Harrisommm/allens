@@ -10,9 +10,11 @@
   },
   "dependencies": {
     "expo": "~54.0.23",
+    "expo-auth-session": "~7.0.9",
     "expo-camera": "~17.0.9",
     "expo-router": "~6.0.14",
     "expo-status-bar": "~3.0.8",
+    "firebase": "^12.6.0",
     "firebase-admin": "^13.6.0",
     "react": "19.1.0",
     "react-native": "0.81.5",
@@ -25,5 +27,6 @@
     "@types/react": "~19.1.0",
     "typescript": "~5.9.2"
   },
-  "private": true
+  "private": true,
+  "packageManager": "pnpm@10.23.0+sha512.21c4e5698002ade97e4efe8b8b4a89a8de3c85a37919f957e7a0f30f38fbc5bbdd05980ffe29179b2fb6e6e691242e098d945d1601772cad0fef5fb6411e2a4b"
 }
