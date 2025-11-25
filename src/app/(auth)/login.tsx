@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
+import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import * as AuthSession from 'expo-auth-session';
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
 
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { SectionHeading } from '@/components/SectionHeading';
@@ -13,20 +15,24 @@ import { useAuth } from '@/store/auth';
 
 WebBrowser.maybeCompleteAuthSession();
 
-const redirectUri = AuthSession.makeRedirectUri();
+const useProxy = Constants.appOwnership === 'expo'; // Expo Go만 proxy 사용
+const redirectUri = AuthSession.makeRedirectUri({ useProxy } as any);
 
 export default function LoginScreen() {
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const setAuth = useAuth((state) => state.signIn);
   const [request, response, promptAsync] = Google.useAuthRequest({
-    clientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    // Expo Go에서 proxy를 쓰려면 expoClientId 지정
+    expoClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
     webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
     androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
     redirectUri,
-  });
+  } as any);
 
   useEffect(() => {
     if (response?.type === 'success' && response.authentication?.idToken) {
+      setIsAuthenticating(true);
       const credential = GoogleAuthProvider.credential(response.authentication.idToken);
       signInWithCredential(auth, credential)
         .then((userCred) => {
@@ -35,7 +41,8 @@ export default function LoginScreen() {
         })
         .catch((err) => {
           console.warn('Google sign-in failed', err);
-        });
+        })
+        .finally(() => setIsAuthenticating(false));
     }
   }, [response, setAuth]);
 
@@ -49,8 +56,14 @@ export default function LoginScreen() {
         </Text>
         <PrimaryButton
           label="Sign in with Google"
-          onPress={() => promptAsync()}
-          disabled={!request}
+          onPress={() => {
+            if (!request) return;
+            setIsAuthenticating(true);
+            promptAsync({ useProxy, redirectUri, useWebRedirect: useProxy } as any).finally(() =>
+              setIsAuthenticating(false)
+            );
+          }}
+          disabled={!request || isAuthenticating}
         />
       </View>
     </View>
