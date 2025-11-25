@@ -1,6 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, initializeAuth } from 'firebase/auth';
-import { getReactNativePersistence } from 'firebase/auth/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const firebaseConfig = {
@@ -15,13 +14,24 @@ const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
 let authInstance;
 try {
-  // If Auth was already initialized (e.g., in a previous render), reuse it.
+  // Try to reuse existing auth if already initialized.
   authInstance = getAuth(app);
 } catch {
-  // Initialize with persistence for React Native.
-  authInstance = initializeAuth(app, {
-    persistence: getReactNativePersistence(AsyncStorage),
-  });
+  // Lazy-require RN persistence helper; fall back to memory if unavailable.
+  let rnPersistence: any;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const rnAuth = require('firebase/auth/react-native');
+    rnPersistence = rnAuth.getReactNativePersistence
+      ? rnAuth.getReactNativePersistence(AsyncStorage)
+      : undefined;
+  } catch {
+    rnPersistence = undefined;
+  }
+
+  authInstance = rnPersistence
+    ? initializeAuth(app, { persistence: rnPersistence })
+    : initializeAuth(app);
 }
 
 export const auth = authInstance;
