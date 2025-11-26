@@ -2,9 +2,11 @@
 
 # dependencies
 node_modules/
+.pnpm-store/
 
 # Expo
 .expo/
+.expo-shared/
 dist/
 web-build/
 expo-env.d.ts
@@ -25,10 +27,18 @@ expo-env.d.ts
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+*.log
 
 # macOS
 .DS_Store
 *.pem
+
+# editors/IDE
+.vscode/
+.idea/
+
+# coverage
+coverage/
 
 # local env files
 .env

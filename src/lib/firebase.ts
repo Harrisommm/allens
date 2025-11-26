@@ -2,6 +2,7 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, initializeAuth } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// Firebase 설정
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -10,28 +11,19 @@ const firebaseConfig = {
   messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
 };
 
+// Firebase 앱 초기화
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
+// Firebase 인증 초기화 (가능하면 RN 퍼시스턴스 적용)
 let authInstance;
 try {
-  // Try to reuse existing auth if already initialized.
   authInstance = getAuth(app);
 } catch {
-  // Lazy-require RN persistence helper; fall back to memory if unavailable.
-  let rnPersistence: any;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const rnAuth = require('firebase/auth/react-native');
-    rnPersistence = rnAuth.getReactNativePersistence
-      ? rnAuth.getReactNativePersistence(AsyncStorage)
-      : undefined;
-  } catch {
-    rnPersistence = undefined;
-  }
-
-  authInstance = rnPersistence
-    ? initializeAuth(app, { persistence: rnPersistence })
-    : initializeAuth(app);
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { getReactNativePersistence } = require('firebase/auth');
+  authInstance = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage),
+  });
 }
 
 export const auth = authInstance;

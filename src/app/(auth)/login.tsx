@@ -14,6 +14,8 @@ import { useAuth } from '@/store/auth';
 const redirectUri = 'https://auth.expo.io/@harrisom/allens';
 WebBrowser.maybeCompleteAuthSession();
 
+console.log('Auth redirectUri:', redirectUri);
+
 export default function LoginScreen() {
   const setAuth = useAuth((s) => s.signIn);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -48,6 +50,7 @@ export default function LoginScreen() {
         <Text style={styles.copy}>
           Sign in with Google via Expo AuthSession. Ensure redirect URI matches Google console.
         </Text>
+        <Text style={styles.debug}>Redirect URI: {redirectUri}</Text>
         <PrimaryButton
           label="Sign in with Google"
           onPress={() => {
@@ -81,5 +84,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#0f172a',
     lineHeight: 22,
+  },
+  debug: {
+    fontSize: 12,
+    color: '#475569',
   },
 });
