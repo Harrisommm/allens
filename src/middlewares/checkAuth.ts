@@ -1,31 +1,28 @@
-import { NextFunction, Request, Response } from 'express';
-import { adminAuth, DecodedIdToken } from '../lib/firebaseAdmin';
+import admin from 'firebase-admin';
 
-export interface AuthenticatedRequest extends Request {
-  user?: DecodedIdToken;
-}
-
-/**
- * Express middleware to verify Firebase ID token from Authorization: Bearer <token>.
- * Attaches decoded token to req.user on success.
- */
-export async function checkAuth(
-  req: AuthenticatedRequest,
-  res: Response,
-  next: NextFunction
-) {
-  try {
-    const authHeader = req.headers.authorization || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-
-    if (!token) {
-      return res.status(401).json({ message: 'Missing Authorization header' });
-    }
-
-    const decoded = await adminAuth.verifyIdToken(token);
-    req.user = decoded;
-    return next();
-  } catch (error) {
-    return res.status(401).json({ message: 'Invalid or expired token' });
+const getAuthToken = (req, res, next) => {
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.split(' ')[0] === 'Bearer'
+  ) {
+    req.authToken = req.headers.authorization.split(' ')[1];
+  } else {
+    req.authToken = null;
   }
-}
+  next();
+}  
+
+export const checkIfAuthenticated = (req, res, next) => {
+  getAuthToken(req, res, async () => {
+    try {
+      const{ authToken } = req;
+      const userInfo = await admin
+        .auth()
+        .verifyIdToken(authToken);
+      req.user = userInfo.uid;
+      return next();
+    } catch (e) {
+      return res.status(401).send('You are not authorized to make this request');
+    }
+  });
+};
