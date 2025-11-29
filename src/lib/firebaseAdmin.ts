@@ -1,13 +1,8 @@
-import { applicationDefault, cert, getApps, initializeApp } from 'firebase-admin/app';
-import { DecodedIdToken, getAuth } from 'firebase-admin/auth';
+import * as admin from 'firebase-admin';
 
-// Initialize Firebase Admin with either JSON from env or GOOGLE_APPLICATION_CREDENTIALS file.
-const serviceAccountJson = process.env.FIREBASE_ADMIN_SA;
-const credential = serviceAccountJson
-  ? cert(JSON.parse(serviceAccountJson))
-  : applicationDefault();
+admin.initializeApp({
+  credential: admin.credential.applicationDefault(),
+  databaseURL: process.env.FIREBASE_DATABASE_URL,
+});
 
-const adminApp = getApps()[0] ?? initializeApp({ credential });
-
-export const adminAuth = getAuth(adminApp);
-export type { DecodedIdToken };
+export default admin
