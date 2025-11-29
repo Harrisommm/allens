@@ -1,8 +1,14 @@
-import * as admin from 'firebase-admin';
+import admin from 'firebase-admin';
 
-admin.initializeApp({
-  credential: admin.credential.applicationDefault(),
-  databaseURL: process.env.FIREBASE_DATABASE_URL,
-});
+// Initialize Firebase Admin with env JSON or GOOGLE_APPLICATION_CREDENTIALS.
+const serviceAccountJson = process.env.FIREBASE_ADMIN_SA;
 
-export default admin
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: serviceAccountJson
+      ? admin.credential.cert(JSON.parse(serviceAccountJson))
+      : admin.credential.applicationDefault(),
+  });
+}
+
+export default admin;
