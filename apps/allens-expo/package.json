@@ -9,13 +9,14 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-google-signin/google-signin": "^16.0.0",
     "expo": "~54.0.25",
     "expo-auth-session": "~7.0.9",
     "expo-camera": "~17.0.9",
     "expo-router": "~6.0.15",
     "expo-status-bar": "~3.0.8",
     "firebase": "^12.6.0",
-    "@react-native-async-storage/async-storage": "2.2.0",
     "firebase-admin": "^12.6.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
@@ -30,5 +31,5 @@
     "typescript": "~5.9.2"
   },
   "private": true,
-  "packageManager": "pnpm@10.23.0+sha512.21c4e5698002ade97e4efe8b8b4a89a8de3c85a37919f957e7a0f30f38fbc5bbdd05980ffe29179b2fb6e6e691242e098d945d1601772cad0fef5fb6411e2a4b"
+  "packageManager": "pnpm@10.24.0+sha512.01ff8ae71b4419903b65c60fb2dc9d34cf8bb6e06d03bde112ef38f7a34d6904c424ba66bea5cdcf12890230bf39f9580473140ed9c946fef328b6e5238a345a"
 }

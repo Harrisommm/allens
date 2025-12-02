@@ -1,0 +1,26 @@
+# Expo cache and build outputs
+.expo/
+.expo-shared/
+dist/
+web-build/
+expo-env.d.ts
+
+# Dependencies (keep hoisted node_modules at repo root)
+node_modules/
+
+# Native build folders (when prebuild/eject)
+android/
+ios/
+
+# Env files
+.env
+.env*.local
+
+# Logs
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.log
+
+# Misc
+.DS_Store
