@@ -120,8 +120,8 @@ export default function CameraScreen() {
           <TouchableOpacity style={styles.shutter} onPress={handleCapture} disabled={isProcessing}>
             {isProcessing ? <ActivityIndicator color="#0f172a" /> : null}
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/')}>
-            <Text style={styles.bottomLink}>Flow</Text>
+          <TouchableOpacity onPress={() => router.push('/history')}>
+            <Text style={styles.bottomLink}>History</Text>
           </TouchableOpacity>
         </View>
         {status ? (
