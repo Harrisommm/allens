@@ -8,7 +8,7 @@ on:
 
 jobs:
   smoke:
-    name: Expo dev server smoke test
+    name: Expo bundle smoke test
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -34,6 +34,7 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
+          cache-dependency-path: apps/allens-expo/pnpm-lock.yaml
 
       - name: Setup Expo CLI
         uses: expo/expo-github-action@v8
@@ -41,40 +42,18 @@ jobs:
           expo-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Install dependencies (app workspace)
+        run: pnpm --dir apps/allens-expo install --frozen-lockfile
 
-      - name: Launch Expo dev server (background)
+      - name: Bundle (android dev)
+        working-directory: apps/allens-expo
         run: |
           set -eux
-          CI=1 pnpm exec expo start --offline --dev-client --max-workers 1 > expo.log 2>&1 &
-          echo $! > expo.pid
+          pnpm exec expo export --platform android --output-dir /tmp/expo-export --dev --force
 
-      - name: Wait for Expo to report ready state
-        run: |
-          set -eux
-          for i in $(seq 1 30); do
-            if grep -q "Waiting on http://localhost" expo.log || grep -q "Tunnel ready" expo.log; then
-              exit 0
-            fi
-            if ! ps -p "$(cat expo.pid)" > /dev/null 2>&1; then
-              echo "Expo process exited early"
-              cat expo.log
-              exit 1
-            fi
-            sleep 2
-          done
-          echo "Expo server did not report ready state within timeout"
-          cat expo.log
-          exit 1
-
-      - name: Stop Expo dev server
-        if: always()
-        run: |
-          if [ -f expo.pid ]; then
-            kill "$(cat expo.pid)" || true
-          fi
-          if [ -f expo.log ]; then
-            echo "----- Expo log -----"
-            cat expo.log
-          fi
+      - name: Upload export artifact (debug)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: expo-export-logs
+          path: /tmp/expo-export/**/*

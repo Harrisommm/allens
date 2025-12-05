@@ -7,11 +7,13 @@ import { PrimaryButton } from '@/components/PrimaryButton';
 import { detectIngredientsAsync } from '@/services/ocr';
 import { translateTextAsync } from '@/services/translation';
 import { findAllergenMatches } from '@/services/allergy-matcher';
+import { useAuth } from '@/store/auth';
 import { useScanHistory } from '@/store/scan-history';
 
 const MOCK_USER_ALLERGENS = ['milk', 'almond', 'shellfish'];
 
 export default function CameraScreen() {
+  const isSignedIn = useAuth((state) => state.isSignedIn);
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<CameraType>('back');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -20,6 +22,16 @@ export default function CameraScreen() {
   const addScan = useScanHistory((state) => state.addScan);
 
   const permissionContent = useMemo(() => {
+    if (!isSignedIn) {
+      return (
+        <View style={styles.permissionCard}>
+          <Text style={styles.permissionTitle}>Login required</Text>
+          <Text style={styles.permissionBody}>Sign in to start scanning.</Text>
+          <PrimaryButton label="Go to login" onPress={() => router.replace('/(auth)/login')} />
+        </View>
+      );
+    }
+
     if (!permission) {
       return (
         <View style={styles.permissionCard}>
@@ -108,8 +120,8 @@ export default function CameraScreen() {
           <TouchableOpacity style={styles.shutter} onPress={handleCapture} disabled={isProcessing}>
             {isProcessing ? <ActivityIndicator color="#0f172a" /> : null}
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/')}>
-            <Text style={styles.bottomLink}>Flow</Text>
+          <TouchableOpacity onPress={() => router.push('/history')}>
+            <Text style={styles.bottomLink}>History</Text>
           </TouchableOpacity>
         </View>
         {status ? (
