@@ -49,10 +49,11 @@ jobs:
         working-directory: apps/allens-expo
         run: |
           set -eux
-          CI=1 pnpm exec expo start --offline --dev-client --max-workers 1 > ../expo.log 2>&1 &
-          echo $! > ../expo.pid
+          CI=1 pnpm exec expo start --offline --dev-client --max-workers 1 > expo.log 2>&1 &
+          echo $! > expo.pid
 
       - name: Wait for Expo to report ready state
+        working-directory: apps/allens-expo
         run: |
           set -eux
           for i in $(seq 1 30); do
@@ -72,6 +73,7 @@ jobs:
 
       - name: Stop Expo dev server
         if: always()
+        working-directory: apps/allens-expo
         run: |
           if [ -f expo.pid ]; then
             kill "$(cat expo.pid)" || true
