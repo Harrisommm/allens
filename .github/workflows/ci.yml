@@ -8,13 +8,10 @@ on:
 
 jobs:
   smoke:
-    name: Expo dev server smoke test
+    name: Expo bundle smoke test
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    env:
-      EXPO_LOG: /tmp/expo.log
-      EXPO_PID: /tmp/expo.pid
 
     steps:
       - name: Verify EXPO_TOKEN is configured
@@ -48,53 +45,15 @@ jobs:
       - name: Install dependencies (app workspace)
         run: pnpm --dir apps/allens-expo install --frozen-lockfile
 
-      - name: Launch Expo dev server (background)
+      - name: Bundle (android dev)
         working-directory: apps/allens-expo
         run: |
           set -eux
-          : > "$EXPO_LOG"
-          CI=1 pnpm exec expo start --offline --dev-client --max-workers 1 > "$EXPO_LOG" 2>&1 &
-          echo $! > "$EXPO_PID"
-          sleep 5
-          # fail fast if expo died immediately
-          if ! ps -p "$(cat "$EXPO_PID")" > /dev/null 2>&1; then
-            echo "Expo process died during launch"
-            cat "$EXPO_LOG"
-            exit 1
-          fi
+          pnpm exec expo export --platform android --output-dir /tmp/expo-export --dev --force
 
-      - name: Wait for Expo to report ready state
-        working-directory: apps/allens-expo
-        run: |
-          set -eux
-          if [ ! -f "$EXPO_LOG" ] || [ ! -f "$EXPO_PID" ]; then
-            echo "Expo log or pid file missing"
-            ls -l "$EXPO_LOG" "$EXPO_PID" || true
-            exit 1
-          fi
-          for i in $(seq 1 40); do
-            if grep -q "Waiting on http://localhost" "$EXPO_LOG" || grep -q "Tunnel ready" "$EXPO_LOG"; then
-              exit 0
-            fi
-            if ! ps -p "$(cat "$EXPO_PID")" > /dev/null 2>&1; then
-              echo "Expo process exited early"
-              cat "$EXPO_LOG"
-              exit 1
-            fi
-            sleep 2
-          done
-          echo "Expo server did not report ready state within timeout"
-          cat "$EXPO_LOG"
-          exit 1
-
-      - name: Stop Expo dev server
-        if: always()
-        working-directory: apps/allens-expo
-        run: |
-          if [ -f "$EXPO_PID" ]; then
-            kill "$(cat "$EXPO_PID")" || true
-          fi
-          if [ -f "$EXPO_LOG" ]; then
-            echo "----- Expo log -----"
-            cat "$EXPO_LOG"
-          fi
+      - name: Upload export artifact (debug)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: expo-export-logs
+          path: /tmp/expo-export/**/*
