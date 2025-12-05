@@ -2,6 +2,7 @@
   "expo": {
     "name": "allens",
     "slug": "allens",
+    "scheme": "allens",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,7 +14,9 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "bundleIdentifier": "com.allens.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -21,12 +24,27 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "googleServicesFile": "./google-services.json",
+      "predictiveBackGestureEnabled": false,
+      "package": "com.allens.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth",
+      "@react-native-firebase/crashlytics",
+      "@react-native-google-signin/google-signin",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static",
+            "forceStaticLinking": ["RNFBApp", "RNFBAuth", "RNFBCrashlytics"]
+          }
+        }
+      ],
       "expo-router"
     ],
     "extra": {
@@ -35,7 +53,7 @@
       },
       "eas": {
         "projectId": "e16db728-7b33-42b7-ba4b-0e26ee42816f"
-      }
+      } 
     },
     "owner": "harrisom"
   }
