@@ -34,6 +34,7 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
+          cache-dependency-path: apps/allens-expo/pnpm-lock.yaml
 
       - name: Setup Expo CLI
         uses: expo/expo-github-action@v8
@@ -41,8 +42,8 @@ jobs:
           expo-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Install dependencies (workspace root)
-        run: pnpm install --frozen-lockfile
+      - name: Install dependencies (app workspace)
+        run: pnpm --dir apps/allens-expo install --frozen-lockfile
 
       - name: Launch Expo dev server (background)
         working-directory: apps/allens-expo
