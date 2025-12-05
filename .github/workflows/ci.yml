@@ -49,8 +49,16 @@ jobs:
         working-directory: apps/allens-expo
         run: |
           set -eux
+          : > expo.log
           CI=1 pnpm exec expo start --offline --dev-client --max-workers 1 > expo.log 2>&1 &
           echo $! > expo.pid
+          sleep 5
+          # fail fast if expo died immediately
+          if ! ps -p "$(cat expo.pid)" > /dev/null 2>&1; then
+            echo "Expo process died during launch"
+            cat expo.log
+            exit 1
+          fi
 
       - name: Wait for Expo to report ready state
         working-directory: apps/allens-expo
