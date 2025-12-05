@@ -12,6 +12,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      EXPO_LOG: /tmp/expo.log
+      EXPO_PID: /tmp/expo.pid
 
     steps:
       - name: Verify EXPO_TOKEN is configured
@@ -49,14 +52,14 @@ jobs:
         working-directory: apps/allens-expo
         run: |
           set -eux
-          : > expo.log
-          CI=1 pnpm exec expo start --offline --dev-client --max-workers 1 > expo.log 2>&1 &
-          echo $! > expo.pid
+          : > "$EXPO_LOG"
+          CI=1 pnpm exec expo start --offline --dev-client --max-workers 1 > "$EXPO_LOG" 2>&1 &
+          echo $! > "$EXPO_PID"
           sleep 5
           # fail fast if expo died immediately
-          if ! ps -p "$(cat expo.pid)" > /dev/null 2>&1; then
+          if ! ps -p "$(cat "$EXPO_PID")" > /dev/null 2>&1; then
             echo "Expo process died during launch"
-            cat expo.log
+            cat "$EXPO_LOG"
             exit 1
           fi
 
@@ -64,29 +67,34 @@ jobs:
         working-directory: apps/allens-expo
         run: |
           set -eux
-          for i in $(seq 1 30); do
-            if grep -q "Waiting on http://localhost" expo.log || grep -q "Tunnel ready" expo.log; then
+          if [ ! -f "$EXPO_LOG" ] || [ ! -f "$EXPO_PID" ]; then
+            echo "Expo log or pid file missing"
+            ls -l "$EXPO_LOG" "$EXPO_PID" || true
+            exit 1
+          fi
+          for i in $(seq 1 40); do
+            if grep -q "Waiting on http://localhost" "$EXPO_LOG" || grep -q "Tunnel ready" "$EXPO_LOG"; then
               exit 0
             fi
-            if ! ps -p "$(cat expo.pid)" > /dev/null 2>&1; then
+            if ! ps -p "$(cat "$EXPO_PID")" > /dev/null 2>&1; then
               echo "Expo process exited early"
-              cat expo.log
+              cat "$EXPO_LOG"
               exit 1
             fi
             sleep 2
           done
           echo "Expo server did not report ready state within timeout"
-          cat expo.log
+          cat "$EXPO_LOG"
           exit 1
 
       - name: Stop Expo dev server
         if: always()
         working-directory: apps/allens-expo
         run: |
-          if [ -f expo.pid ]; then
-            kill "$(cat expo.pid)" || true
+          if [ -f "$EXPO_PID" ]; then
+            kill "$(cat "$EXPO_PID")" || true
           fi
-          if [ -f expo.log ]; then
+          if [ -f "$EXPO_LOG" ]; then
             echo "----- Expo log -----"
-            cat expo.log
+            cat "$EXPO_LOG"
           fi
