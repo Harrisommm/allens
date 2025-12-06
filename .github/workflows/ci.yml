@@ -1,4 +1,4 @@
-name: expo-smoke
+name: expo-ci
 
 on:
   push:
@@ -7,21 +7,25 @@ on:
   pull_request:
 
 jobs:
-  smoke:
-    name: Expo bundle smoke test
+  bundle:
+    name: Expo export smoke test
     runs-on: ubuntu-latest
     permissions:
       contents: read
 
+    defaults:
+      run:
+        shell: bash
+
     steps:
-      - name: Verify EXPO_TOKEN is configured
+      - name: Check EXPO_TOKEN
         run: |
           if [ -z "${{ secrets.EXPO_TOKEN }}" ]; then
-            echo "Missing EXPO_TOKEN secret. Follow https://docs.expo.dev/eas-update/github-actions/#publish-previews-on-pull-requests to create one."
+            echo "Missing EXPO_TOKEN secret. See https://docs.expo.dev/eas-update/github-actions/."
             exit 1
           fi
 
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup pnpm
@@ -40,20 +44,21 @@ jobs:
         uses: expo/expo-github-action@v8
         with:
           expo-version: latest
+          packager: pnpm
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Install dependencies (app workspace)
+      - name: Install deps (app workspace)
         run: pnpm --dir apps/allens-expo install --frozen-lockfile
 
-      - name: Bundle (android dev)
+      - name: Export bundle (android dev)
         working-directory: apps/allens-expo
         run: |
           set -eux
-          pnpm exec expo export --platform android --output-dir /tmp/expo-export --dev --force
+          pnpm exec expo export --platform android --dev --force --output-dir /tmp/expo-export
 
-      - name: Upload export artifact (debug)
+      - name: Upload export artifact on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: expo-export-logs
-          path: /tmp/expo-export/**/*
+          name: expo-export-debug
+          path: /tmp/expo-export
