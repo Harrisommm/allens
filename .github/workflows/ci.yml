@@ -54,7 +54,7 @@ jobs:
         working-directory: apps/allens-expo
         run: |
           set -eux
-          pnpm exec expo export --platform android --dev --force --output-dir /tmp/expo-export
+          pnpm exec expo export --platform android --dev --output-dir /tmp/expo-export
 
       - name: Upload export artifact on failure
         if: failure()
