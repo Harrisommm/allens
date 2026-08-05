@@ -1,31 +1,41 @@
-export async function translateTextAsync(text: string, targetLocale: string) {
-  // 간단한 더미 비동기 처리 (향후 실제 API 연동 시 여기 교체)
-  await new Promise((resolve) => setTimeout(resolve, 100));
+/**
+ * Google Cloud Translation (v2 REST) — plain fetch, no SDK needed.
+ *
+ * The key ships inside the app bundle, so restrict it in Google Cloud Console
+ * to the Translation API and to this app's bundle id / SHA-1. Without a key the
+ * app still works: text is shown untranslated and allergen matching runs on the
+ * original label, which is the language the label was printed in anyway.
+ */
+const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY;
 
-  // targetLocale이 en-US, ko-KR 이런 식으로 들어와도 앞의 언어 코드만 사용
-  const lang = targetLocale.split('-')[0];
+export async function translateTextAsync(text: string, targetLocale: string): Promise<string> {
+  const target = targetLocale.split('-')[0];
+  if (!API_KEY || !text.trim()) return text;
 
-  // TODO: 나중에 성분들을 계속 추가할 수 있는 간단한 사전
-  const ingredientTranslations: Record<string, Record<string, string>> = {
-    // 물 계열 예시: 정제수
-    '정제수': {
-      ko: '정제수',
-      en: 'purified water',
-      ja: '精製水',
-      zh: '纯净水',
-    },
-    // 필요하면 여기 아래에 더 추가:
-    // '물': { ko: '물', en: 'water', ja: '水', zh: '水' },
-    // ...
-  };
+  try {
+    const response = await fetch(
+      `https://translation.googleapis.com/language/translate/v2?key=${API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ q: text, target, format: 'text' }),
+      }
+    );
 
-  const key = text.trim();
-  const translated = ingredientTranslations[key]?.[lang];
-
-  // 사전에 등록된 성분이면 번역 결과 반환, 아니면 원문 그대로 반환
-  if (translated) {
-    return translated;
+    if (!response.ok) return text;
+    const json = await response.json();
+    return json?.data?.translations?.[0]?.translatedText ?? text;
+  } catch {
+    // A failed translation must never lose the scan.
+    return text;
   }
+}
 
-  return text;
+/** Device language ("ko", "en", …) with a safe fallback. */
+export function deviceLanguage(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().locale.split('-')[0] || 'en';
+  } catch {
+    return 'en';
+  }
 }

@@ -37,15 +37,28 @@
       "@react-native-firebase/crashlytics",
       "@react-native-google-signin/google-signin",
       [
+        "expo-camera",
+        {
+          "cameraPermission": "allens uses the camera to read ingredient labels. Photos stay on your device."
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "ios": {
             "useFrameworks": "static",
-            "forceStaticLinking": ["RNFBApp", "RNFBAuth", "RNFBCrashlytics"]
+            "forceStaticLinking": ["RNFBApp", "RNFBAuth", "RNFBCrashlytics"],
+            "deploymentTarget": "15.5"
           }
         }
       ],
-      "expo-router"
+      "expo-router",
+      [
+        "./plugins/with-pod-deployment-target",
+        {
+          "deploymentTarget": "15.5"
+        }
+      ]
     ],
     "extra": {
       "router": {
