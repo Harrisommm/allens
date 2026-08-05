@@ -36,7 +36,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
           cache-dependency-path: apps/allens-expo/pnpm-lock.yaml
 
@@ -49,6 +49,14 @@ jobs:
 
       - name: Install deps (app workspace)
         run: pnpm --dir apps/allens-expo install --frozen-lockfile
+
+      - name: Typecheck
+        working-directory: apps/allens-expo
+        run: pnpm run typecheck
+
+      - name: Allergen matcher self-check
+        working-directory: apps/allens-expo
+        run: pnpm run check
 
       - name: Export bundle (android dev)
         working-directory: apps/allens-expo

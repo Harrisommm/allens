@@ -1,78 +1,74 @@
-import {Dimensions, StyleSheet, View, Pressable, Text} from 'react-native';
-import React from 'react';
+import { useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { GoogleAuthProvider, getAuth, signInWithCredential } from '@react-native-firebase/auth';
-
 import {
-    GoogleSignin,
-    GoogleSigninButton,
-    isErrorWithCode,
-    isSuccessResponse,
-    statusCodes,    
+  GoogleSignin,
+  GoogleSigninButton,
+  isErrorWithCode,
+  isSuccessResponse,
+  statusCodes,
 } from '@react-native-google-signin/google-signin';
 
-GoogleSignin.configure({
-    webClientId: 
-    "785759755772-1ccmpgd44r06nq5qt7bhjua091clfbel.apps.googleusercontent.com"
-});
+// Not a secret (it ships in the app), but keep it configurable per environment.
+const WEB_CLIENT_ID =
+  process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ??
+  '785759755772-1ccmpgd44r06nq5qt7bhjua091clfbel.apps.googleusercontent.com';
 
-const GoogleAuth = () => {
-    async function signIn() {
-        let idToken;
-        //check if your device supports Google Play
-        await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-        //get the users ID token
-        const signInResult = await GoogleSignin.signIn();
+GoogleSignin.configure({ webClientId: WEB_CLIENT_ID });
 
-        //try the new style of Google signin result
-        idToken = signInResult.data?.idToken;
-        if (!idToken) {
-            //if you are using older versions of google signin, try old style result
-            idToken = signInResult.idToken;
-        }
-        if (!idToken) {
-            throw new Error("Failed to get ID token from Google Sign-In");            
-        }
+/** Signing in updates Firebase; the root layout listens and routes from there. */
+export default function GoogleAuth() {
+  const [error, setError] = useState<string | null>(null);
+  const [isBusy, setIsBusy] = useState(false);
 
-        //create a google credential with the token
-        const googleCredential = GoogleAuthProvider.credential(
-            signInResult.data.idToken
-        );
-            
-        //Sign-in the user with the credential
-        return signInWithCredential(getAuth(), googleCredential);
+  const signIn = async () => {
+    if (isBusy) return;
+    setIsBusy(true);
+    setError(null);
+
+    try {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const result = await GoogleSignin.signIn();
+
+      if (!isSuccessResponse(result)) return; // user dismissed the sheet
+      const idToken = result.data.idToken;
+      if (!idToken) throw new Error('Google did not return an ID token.');
+
+      await signInWithCredential(getAuth(), GoogleAuthProvider.credential(idToken));
+    } catch (cause) {
+      if (isErrorWithCode(cause) && cause.code === statusCodes.SIGN_IN_CANCELLED) return;
+      setError(cause instanceof Error ? cause.message : 'Sign-in failed. Please try again.');
+    } finally {
+      setIsBusy(false);
     }
-    
-    const signOut = async () => {
-        GoogleSignin.signOut();
-    };
+  };
 
-    return(
-        <View 
-            style={{
-                width:Dimensions.get('screen').width,
-                height:Dimensions.get('screen').height,
-                justifyContent:'center',
-                alignItems:'center'
-            }}
-        >
-            <GoogleSigninButton
-                size={GoogleSigninButton.Size.Wide}
-                color={GoogleSigninButton.Color.Dark}
-                onPress={() => {
-                    signIn();
-                    //initiate Google Sign-In process
-                }}
-                //disabled={isInProgress}
-            />
-            <Pressable onPress={signOut} style={{marginTop:20, padding:10, backgroundColor:'lightgrey'}}>
-                <Text>
-                    SignOut
-                </Text>
-            </Pressable>
-        </View>
-    );
-};
+  return (
+    <View style={styles.container}>
+      <GoogleSigninButton
+        size={GoogleSigninButton.Size.Wide}
+        color={GoogleSigninButton.Color.Dark}
+        onPress={signIn}
+        disabled={isBusy}
+      />
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+    </View>
+  );
+}
 
-export default GoogleAuth;
+export async function signOutEverywhere() {
+  await GoogleSignin.signOut().catch(() => {});
+  await getAuth().signOut();
+}
 
-const styles = StyleSheet.create({});
+const styles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+    gap: 16,
+  },
+  error: {
+    color: '#b91c1c',
+    textAlign: 'center',
+    paddingHorizontal: 24,
+  },
+});
