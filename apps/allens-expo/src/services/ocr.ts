@@ -1,5 +1,7 @@
 import TextRecognition, { TextRecognitionScript } from '@react-native-ml-kit/text-recognition';
 
+import { extractIngredientSection } from './label-text';
+
 export type OcrResult = {
   text: string;
   title?: string;
@@ -25,7 +27,11 @@ export async function detectIngredientsAsync(
   }
 
   return {
-    text: lines.join(' '),
+    // Ingredients only — the brand, address, phone number and nutrition table
+    // are noise that produce false matches and clutter the saved scan.
+    text: extractIngredientSection(lines).join(' '),
+    // The product name is usually the first thing printed, and it makes a
+    // better history entry than the ingredient header.
     title: lines[0].slice(0, 60),
   };
 }
