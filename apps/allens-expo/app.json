@@ -47,11 +47,18 @@
         {
           "ios": {
             "useFrameworks": "static",
-            "forceStaticLinking": ["RNFBApp", "RNFBAuth", "RNFBCrashlytics"]
+            "forceStaticLinking": ["RNFBApp", "RNFBAuth", "RNFBCrashlytics"],
+            "deploymentTarget": "15.5"
           }
         }
       ],
-      "expo-router"
+      "expo-router",
+      [
+        "./plugins/with-pod-deployment-target",
+        {
+          "deploymentTarget": "15.5"
+        }
+      ]
     ],
     "extra": {
       "router": {
