@@ -1,86 +1,51 @@
-import { useMemo, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { router } from 'expo-router';
 import { CameraType, CameraView, useCameraPermissions } from 'expo-camera';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { detectIngredientsAsync } from '@/services/ocr';
-import { translateTextAsync } from '@/services/translation';
-import { findAllergenMatches } from '@/services/allergy-matcher';
-import { useAuth } from '@/store/auth';
+import { deviceLanguage, translateTextAsync } from '@/services/translation';
+import { findAllergenMatches, matchedAllergenNames } from '@/services/allergy-matcher';
+import { useAllergies } from '@/store/allergies';
 import { useScanHistory } from '@/store/scan-history';
 
-const MOCK_USER_ALLERGENS = ['milk', 'almond', 'shellfish'];
-
 export default function CameraScreen() {
-  const isSignedIn = useAuth((state) => state.isSignedIn);
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<CameraType>('back');
   const [isProcessing, setIsProcessing] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const cameraRef = useRef<CameraView>(null);
   const addScan = useScanHistory((state) => state.addScan);
-
-  const permissionContent = useMemo(() => {
-    if (!isSignedIn) {
-      return (
-        <View style={styles.permissionCard}>
-          <Text style={styles.permissionTitle}>Login required</Text>
-          <Text style={styles.permissionBody}>Sign in to start scanning.</Text>
-          <PrimaryButton label="Go to login" onPress={() => router.replace('/(auth)/login')} />
-        </View>
-      );
-    }
-
-    if (!permission) {
-      return (
-        <View style={styles.permissionCard}>
-          <Text style={styles.permissionTitle}>Camera permission</Text>
-          <Text style={styles.permissionBody}>
-            We need access to capture ingredient labels. Tap the button below to continue.
-          </Text>
-          <PrimaryButton label="Grant permission" onPress={requestPermission} />
-        </View>
-      );
-    }
-
-    if (!permission.granted) {
-      return (
-        <View style={styles.permissionCard}>
-          <Text style={styles.permissionTitle}>Permission denied</Text>
-          <Text style={styles.permissionBody}>
-            Enable camera access in system settings to keep scanning food labels.
-          </Text>
-          <PrimaryButton label="Try again" onPress={requestPermission} />
-        </View>
-      );
-    }
-
-    return null;
-  }, [permission, requestPermission]);
+  const selectedCount = useAllergies((state) => state.selected.length);
 
   const handleCapture = async () => {
-    if (!cameraRef.current || isProcessing) {
-      return;
-    }
+    if (!cameraRef.current || isProcessing) return;
 
     try {
       setIsProcessing(true);
       setStatus('Capturing photo…');
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.7 });
+      if (!photo?.uri) throw new Error('Could not save the photo. Try again.');
 
-      setStatus('Running mock OCR…');
+      setStatus('Reading the label…');
       const ocr = await detectIngredientsAsync(photo.uri);
 
-      setStatus('Translating ingredients…');
-      const translated = await translateTextAsync(ocr.text, 'ko');
+      setStatus('Translating…');
+      const translated = await translateTextAsync(ocr.text, deviceLanguage());
 
-      setStatus('Computing allergy matches…');
-      const matches = findAllergenMatches(translated, MOCK_USER_ALLERGENS);
+      // Match both texts: the label's own language and the translation. Either
+      // one alone can miss an allergen the other spells out.
+      const allergens = useAllergies.getState().activeAllergens();
+      const matches = matchedAllergenNames([
+        ...findAllergenMatches(translated, allergens),
+        ...findAllergenMatches(ocr.text, allergens),
+      ]);
 
+      const id = Date.now().toString();
       addScan({
-        id: Date.now().toString(),
-        title: ocr.title ?? 'Scanned food',
+        id,
+        title: ocr.title ?? 'Scanned label',
         originalText: ocr.text,
         translatedText: translated,
         highlightedIngredients: matches,
@@ -88,17 +53,49 @@ export default function CameraScreen() {
         createdAt: new Date().toISOString(),
       });
 
-      setStatus(`Saved scan • ${matches.length} risky ingredient(s)`);
+      setStatus(null);
+      router.push(`/history/${id}`);
     } catch (error) {
-      setStatus((error as Error).message);
+      setStatus(error instanceof Error ? error.message : 'Scan failed. Try again.');
+      setTimeout(() => setStatus(null), 4000);
     } finally {
       setIsProcessing(false);
-      setTimeout(() => setStatus(null), 4000);
     }
   };
 
-  if (permissionContent) {
-    return <View style={styles.container}>{permissionContent}</View>;
+  if (!permission) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
+  if (!permission.granted) {
+    return (
+      <View style={styles.permissionCard}>
+        <Text style={styles.permissionTitle}>Camera permission</Text>
+        <Text style={styles.permissionBody}>
+          allens needs the camera to read ingredient labels. Photos stay on this device.
+        </Text>
+        <PrimaryButton
+          label={permission.canAskAgain ? 'Grant permission' : 'Open settings'}
+          onPress={permission.canAskAgain ? requestPermission : Linking.openSettings}
+        />
+      </View>
+    );
+  }
+
+  if (selectedCount === 0) {
+    return (
+      <View style={styles.permissionCard}>
+        <Text style={styles.permissionTitle}>Set up your allergies</Text>
+        <Text style={styles.permissionBody}>
+          Tell allens what to look for and every scan will flag it automatically.
+        </Text>
+        <PrimaryButton label="Choose allergies" onPress={() => router.push('/(setup)/allergies')} />
+      </View>
+    );
   }
 
   return (
@@ -106,24 +103,30 @@ export default function CameraScreen() {
       <CameraView ref={cameraRef} style={styles.camera} facing={facing} />
       <View style={styles.overlay}>
         <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => router.push('/history')}>
-            <Text style={styles.topBarLink}>History</Text>
+          <TouchableOpacity onPress={() => router.push('/(setup)/allergies')}>
+            <Text style={styles.topBarLink}>Allergies</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => setFacing((prev) => (prev === 'back' ? 'front' : 'back'))}>
             <Text style={styles.topBarLink}>Flip</Text>
           </TouchableOpacity>
         </View>
+
         <View style={styles.bottomBar}>
-          <TouchableOpacity onPress={() => router.push('/(setup)/allergies')}>
-            <Text style={styles.bottomLink}>User info</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.shutter} onPress={handleCapture} disabled={isProcessing}>
-            {isProcessing ? <ActivityIndicator color="#0f172a" /> : null}
-          </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/history')}>
             <Text style={styles.bottomLink}>History</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.shutter}
+            onPress={handleCapture}
+            disabled={isProcessing}
+            accessibilityRole="button"
+            accessibilityLabel="Scan label"
+          >
+            {isProcessing ? <ActivityIndicator color="#0f172a" /> : null}
+          </TouchableOpacity>
+          <View style={styles.spacer} />
         </View>
+
         {status ? (
           <View style={styles.statusBubble}>
             <Text style={styles.status}>{status}</Text>
@@ -139,6 +142,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000',
   },
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
   camera: {
     flex: 1,
   },
@@ -150,6 +159,7 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: 32,
   },
   topBarLink: {
     color: '#f8fafc',
@@ -163,6 +173,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     marginBottom: 16,
   },
+  spacer: {
+    width: 56,
+  },
   shutter: {
     width: 76,
     height: 76,
@@ -174,12 +187,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   statusBubble: {
+    position: 'absolute',
+    bottom: 140,
     alignSelf: 'center',
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     borderRadius: 999,
-    marginBottom: 20,
   },
   status: {
     color: '#f8fafc',
@@ -205,5 +219,6 @@ const styles = StyleSheet.create({
   bottomLink: {
     color: '#f8fafc',
     fontSize: 14,
+    width: 56,
   },
 });

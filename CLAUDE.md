@@ -7,35 +7,35 @@ Expo/React Native app that scans food labels, OCRs the ingredients, translates t
 All app code is in `apps/allens-expo` — **run every command from there**, not the repo root.
 
 - `src/app/` — Expo Router routes (`expo-router/entry` is the entry point; `app.json` sets `extra.router.appRoot` to `src/app`). Add a screen by adding a file.
-- `src/components/` — UI primitives + `firebase-auth/` sign-in buttons.
-- `src/services/` — `ocr.ts`, `translation.ts`, `allergy-matcher.ts`.
-- `src/store/` — Zustand stores (`auth`, `scan-history`).
+- `src/components/` — UI primitives + `firebase-auth/google-auth.tsx` (also exports `signOutEverywhere`).
+- `src/services/` — `ocr.ts` (ML Kit), `translation.ts` (Google Translate REST), `allergy-matcher.ts` (pure, self-checked).
+- `src/store/` — Zustand stores: `auth` (mirrors Firebase), `allergies` and `scan-history` (both persisted to AsyncStorage).
 
 ## Commands
 
 ```bash
 pnpm install
-pnpm start        # expo start
+pnpm start          # expo start
 pnpm ios | pnpm android
-npx tsc --noEmit  # what CI checks
+pnpm typecheck      # tsc --noEmit
+pnpm check          # allergen matcher self-check (node --experimental-strip-types, needs Node ≥22.6)
+pnpm exec expo export --platform android --dev   # bundle smoke test, same as CI
 ```
 
-pnpm only (lockfile + `packageManager` field). No lint or test scripts exist — CI (`.github/workflows/ci.yml`) runs install + TypeScript only.
+pnpm only (lockfile + `packageManager` field). No lint or unit-test framework — CI (`.github/workflows/ci.yml`) runs typecheck, the matcher self-check, and an Expo export.
 
-## State of the code vs. the spec
+## How a scan flows
 
-The readme describes the target, not what's built. Currently:
+`camera.tsx` → `detectIngredientsAsync` (ML Kit, on-device) → `translateTextAsync` (no-op without an API key) → `findAllergenMatches` against **both** the original and translated text → saved to `scan-history` → pushes `/history/[id]`, which recomputes match positions to paint them red.
 
-- `services/ocr.ts` returns a hardcoded sample string after a 400ms sleep. No ML Kit.
-- `services/translation.ts` is a tiny hardcoded dictionary, no Google Cloud Translation.
-- `services/allergy-matcher.ts` is a `toLowerCase().includes()` substring filter.
-- Camera is `expo-camera`, not `react-native-vision-camera` as the readme says.
-- Auth is `@react-native-firebase/auth` with Google + Apple; no Kakao/Naver.
+Auth is one-directional: Firebase is the source of truth, `_layout.tsx` subscribes with `onAuthStateChanged` and mirrors it into the `auth` store, and route guards read the store. Never set `isSignedIn` by hand.
 
-Don't assume a service is real — read it first.
+## Gotchas
 
-## Notes
-
-- Native Firebase config files (`GoogleService-Info.plist`, `google-services.json`) are referenced by `app.json` and are gitignored.
-- Client-readable env vars must be prefixed `EXPO_PUBLIC_`; CI/EAS secrets mirror them via `eas secret:create`.
-- Some comments are in Korean; that's fine, match the surrounding file.
+- **Won't run in Expo Go.** Native Firebase + ML Kit require a dev build (`eas build --profile development`).
+- Native Firebase config (`GoogleService-Info.plist`, `google-services.json`) is gitignored and must be present before any native build.
+- `activeAllergens()` returns a fresh array — never use it directly as a zustand selector (infinite re-render). Select `selected`/`custom` and derive with `useMemo`, as `history/[id].tsx` does.
+- Copy `.env.example` to `.env`; client-readable vars need the `EXPO_PUBLIC_` prefix, and CI/EAS mirrors them via `eas secret:create`.
+- `allergy-matcher.ts` matches substrings on purpose (`밀` inside `밀가루`). A false positive is safe; a miss is not. Test any change with `pnpm check`.
+- Some comments are in Korean; match the surrounding file.
+- Still spec, not code: Kakao/Naver login, Firestore sync, Apple sign-in, gallery import, shareable cards.

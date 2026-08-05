@@ -1,15 +1,18 @@
 import { create } from 'zustand';
 
+export type AuthUser = { uid: string; email?: string | null; displayName?: string | null };
+
 type AuthState = {
+  user: AuthUser | null;
   isSignedIn: boolean;
-  user?: { uid: string; email?: string | null };
-  signIn: (user: { uid: string; email?: string | null }) => void;
-  signOut: () => void;
+  /** False until Firebase reports the restored session, so we don't bounce to login on launch. */
+  isReady: boolean;
+  setUser: (user: AuthUser | null) => void;
 };
 
 export const useAuth = create<AuthState>((set) => ({
+  user: null,
   isSignedIn: false,
-  user: undefined,
-  signIn: (user) => set({ isSignedIn: true, user }),
-  signOut: () => set({ isSignedIn: false, user: undefined }),
+  isReady: false,
+  setUser: (user) => set({ user, isSignedIn: Boolean(user), isReady: true }),
 }));

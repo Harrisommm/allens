@@ -9,7 +9,13 @@ export default function HistoryScreen() {
   const empty = scans.length === 0;
 
   const data = useMemo(
-    () => scans.map((scan) => ({ ...scan, subtitle: `${scan.highlightedIngredients.length} matches` })),
+    () =>
+      scans.map((scan) => ({
+        ...scan,
+        subtitle: scan.highlightedIngredients.length
+          ? `⚠ ${scan.highlightedIngredients.join(', ')}`
+          : '✓ No matches',
+      })),
     [scans]
   );
 
@@ -30,7 +36,14 @@ export default function HistoryScreen() {
                   <Text style={styles.cardTitle}>{item.title}</Text>
                   <Text style={styles.cardSubtitle}>{new Date(item.createdAt).toLocaleString()}</Text>
                 </View>
-                <Text style={styles.cardMeta}>{item.subtitle}</Text>
+                <Text
+                  style={[
+                    styles.cardMeta,
+                    item.highlightedIngredients.length === 0 && styles.cardMetaSafe,
+                  ]}
+                >
+                  {item.subtitle}
+                </Text>
                 <Text style={styles.cardPreview} numberOfLines={3}>
                   {item.translatedText}
                 </Text>
@@ -83,6 +96,10 @@ const styles = StyleSheet.create({
   cardMeta: {
     fontSize: 14,
     color: '#b91c1c',
+    fontWeight: '600',
+  },
+  cardMetaSafe: {
+    color: '#166534',
   },
   cardPreview: {
     color: '#475569',
