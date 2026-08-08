@@ -51,7 +51,9 @@ export default function HistoryDetailScreen() {
       <Text style={styles.meta}>{new Date(scan.createdAt).toLocaleString()}</Text>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Translated text</Text>
+        <Text style={styles.sectionTitle}>
+          Translated text{scan.targetLanguage ? ` · ${scan.targetLanguage}` : ''}
+        </Text>
         {renderHighlighted(scan.translatedText)}
       </View>
 

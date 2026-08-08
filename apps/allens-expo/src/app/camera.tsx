@@ -32,10 +32,13 @@ export default function CameraScreen() {
       const ocr = await detectIngredientsAsync(photo.uri);
 
       setStatus('Translating…');
-      const translated = await translateTextAsync(ocr.text, deviceLanguage());
+      const targetLanguage = deviceLanguage();
+      const translated = await translateTextAsync(ocr.text, targetLanguage);
 
-      // Match both texts: the label's own language and the translation. Either
-      // one alone can miss an allergen the other spells out.
+      // Match both texts. The original is the one that must never be dropped:
+      // its aliases are matched offline, so a missing API key or a dead network
+      // can't turn a risky label green. The translation is a bonus pass that
+      // covers languages the alias table doesn't spell out.
       const allergens = useAllergies.getState().activeAllergens();
       const matches = matchedAllergenNames([
         ...findAllergenMatches(translated, allergens),
@@ -50,6 +53,7 @@ export default function CameraScreen() {
         title: ocr.title ?? scannedAt.toLocaleString(),
         originalText: ocr.text,
         translatedText: translated,
+        targetLanguage,
         highlightedIngredients: matches,
         imageUri: photo.uri,
         createdAt: scannedAt.toISOString(),

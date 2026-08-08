@@ -71,6 +71,15 @@
       ],
       "expo-router",
       [
+        "expo-localization",
+        {
+          "supportedLocales": {
+            "ios": ["en", "ko", "ja"],
+            "android": ["en", "ko", "ja"]
+          }
+        }
+      ],
+      [
         "./plugins/with-pod-deployment-target",
         {
           "deploymentTarget": "15.5"

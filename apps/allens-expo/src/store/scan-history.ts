@@ -7,6 +7,8 @@ export type ScanHistoryItem = {
   title: string;
   originalText: string;
   translatedText: string;
+  /** Language `translatedText` was translated into. Absent on scans saved before it was recorded. */
+  targetLanguage?: string;
   highlightedIngredients: string[];
   imageUri?: string;
   createdAt: string;

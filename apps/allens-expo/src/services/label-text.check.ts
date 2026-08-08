@@ -48,6 +48,25 @@ assert.ok(englishTrimmed.some((l) => l.startsWith('Ingredients')));
 assert.ok(englishTrimmed.some((l) => l.startsWith('Contains')));
 assert.ok(!englishTrimmed.join(' ').includes('Main St'), 'address must be dropped');
 
+// Japanese labels — 内容量 and 賞味期限 end the block just as their Korean twins do
+const japanese = [
+  'チョコクッキー',
+  '株式会社しあわせ食品',
+  '原材料名: 小麦粉、砂糖、全粉乳、大豆油',
+  '内容量 100g',
+  '賞味期限 2026.05.08',
+  '製造者 しあわせ食品 東京都渋谷区1-2-3',
+];
+const japaneseTrimmed = extractIngredientSection(japanese);
+assert.deepEqual(japaneseTrimmed, ['原材料名: 小麦粉、砂糖、全粉乳、大豆油']);
+assert.ok(!japaneseTrimmed.join(' ').includes('渋谷区'), 'address must be dropped');
+
+// the Japanese advisory survives even though it sits past the section end
+assert.deepEqual(
+  extractIngredientSection(['原材料名: 水、砂糖', '内容量 250ml', '本品には乳成分・大豆を含みます']),
+  ['原材料名: 水、砂糖', '本品には乳成分・大豆を含みます']
+);
+
 // multi-line ingredient blocks stay whole
 assert.deepEqual(
   extractIngredientSection(['원재료명', '밀가루, 설탕,', '전지분유(우유)', '유통기한 별도표기']),
@@ -64,6 +83,7 @@ assert.deepEqual(extractIngredientSection([]), []);
 // the printed product name, not the ingredient header
 assert.equal(extractProductName(korean), '맛있는 초코쿠키');
 assert.equal(extractProductName(english), 'Choco Cookies');
+assert.equal(extractProductName(japanese), 'チョコクッキー');
 
 // weights, barcodes, dates and phone numbers are not names
 assert.equal(

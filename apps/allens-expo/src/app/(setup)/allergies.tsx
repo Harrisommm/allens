@@ -5,7 +5,8 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { SectionHeading } from '@/components/SectionHeading';
 import { signOutEverywhere } from '@/components/firebase-auth/google-auth';
-import { PRESET_ALLERGENS, useAllergies } from '@/store/allergies';
+import { PRESET_ALLERGENS } from '@/services/allergy-matcher';
+import { useAllergies } from '@/store/allergies';
 import { useAuth } from '@/store/auth';
 
 export default function AllergySetupScreen() {

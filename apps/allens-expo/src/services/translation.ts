@@ -1,3 +1,5 @@
+import { getLocales } from 'expo-localization';
+
 /**
  * Google Cloud Translation (v2 REST) — plain fetch, no SDK needed.
  *
@@ -31,11 +33,15 @@ export async function translateTextAsync(text: string, targetLocale: string): Pr
   }
 }
 
-/** Device language ("ko", "en", …) with a safe fallback. */
+/**
+ * The language to translate into ("ko", "en", "ja", …).
+ *
+ * This is the app's own language as chosen in the OS per-app language settings,
+ * which starts out as the device language and is user-changeable — `app.json`
+ * declares `supportedLocales` so iOS and Android offer that picker at all.
+ * Android lets it change while the app is running, so read it per scan rather
+ * than caching it.
+ */
 export function deviceLanguage(): string {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().locale.split('-')[0] || 'en';
-  } catch {
-    return 'en';
-  }
+  return getLocales()[0]?.languageCode ?? 'en';
 }
