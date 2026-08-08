@@ -7,7 +7,7 @@
  */
 import assert from 'node:assert/strict';
 
-import { extractIngredientSection } from './label-text.ts';
+import { extractIngredientSection, extractProductName } from './label-text.ts';
 
 // drops brand, address, phone, nutrition — keeps the ingredient block
 const korean = [
@@ -58,5 +58,28 @@ assert.deepEqual(
 const unrecognised = ['설탕', '우유', '대두'];
 assert.deepEqual(extractIngredientSection(unrecognised), unrecognised);
 assert.deepEqual(extractIngredientSection([]), []);
+
+// --- product name ---------------------------------------------------------
+
+// the printed product name, not the ingredient header
+assert.equal(extractProductName(korean), '맛있는 초코쿠키');
+assert.equal(extractProductName(english), 'Choco Cookies');
+
+// weights, barcodes, dates and phone numbers are not names
+assert.equal(
+  extractProductName(['8801234567890', '250ml', '2026.05.08', '순수 우유', '원재료명: 우유']),
+  '순수 우유'
+);
+
+// section headers and advisories are never the name
+assert.equal(extractProductName(['원재료명: 우유, 설탕']), undefined);
+assert.equal(extractProductName(['Contains: milk']), undefined);
+
+// nothing name-like -> undefined, so the caller can fall back to the scan date
+assert.equal(extractProductName(['100g', '8801234567890']), undefined);
+assert.equal(extractProductName([]), undefined);
+
+// long names are truncated for the history list
+assert.equal(extractProductName(['가'.repeat(80)]).length, 60);
 
 console.log('label-text: all checks passed');

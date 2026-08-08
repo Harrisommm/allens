@@ -42,15 +42,17 @@ export default function CameraScreen() {
         ...findAllergenMatches(ocr.text, allergens),
       ]);
 
-      const id = Date.now().toString();
+      const scannedAt = new Date();
+      const id = scannedAt.getTime().toString();
       addScan({
         id,
-        title: ocr.title ?? 'Scanned label',
+        // The product name when the label has one, otherwise the scan date.
+        title: ocr.title ?? scannedAt.toLocaleString(),
         originalText: ocr.text,
         translatedText: translated,
         highlightedIngredients: matches,
         imageUri: photo.uri,
-        createdAt: new Date().toISOString(),
+        createdAt: scannedAt.toISOString(),
       });
 
       setStatus(null);
