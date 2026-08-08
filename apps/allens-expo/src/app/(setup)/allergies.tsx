@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { SectionHeading } from '@/components/SectionHeading';
@@ -13,6 +14,9 @@ export default function AllergySetupScreen() {
   const { selected, custom, toggle, addCustom, removeCustom } = useAllergies();
   const email = useAuth((state) => state.user?.email);
   const [draft, setDraft] = useState('');
+  // The stack hides its header, so every screen has to clear the status bar
+  // and Dynamic Island itself.
+  const insets = useSafeAreaInsets();
 
   const submitCustom = () => {
     addCustom(draft);
@@ -35,7 +39,7 @@ export default function AllergySetupScreen() {
   );
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView contentContainerStyle={[styles.container, { paddingTop: insets.top + 24 }]}>
       <SectionHeading
         title="Allergy profile"
         subtitle="Pick everything you react to. Every scan is matched against this list."

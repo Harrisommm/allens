@@ -95,6 +95,16 @@ assert.equal(
 assert.equal(extractProductName(['원재료명: 우유, 설탕']), undefined);
 assert.equal(extractProductName(['Contains: milk']), undefined);
 
+// an ingredients-only photo has no product name in frame. The search stops at
+// the first section header rather than walking into the list and titling the
+// scan with its first ingredient.
+assert.equal(
+  extractProductName(['원재료명: 밀가루, 설탕, 전지분유(우유)', '알레르기 유발물질: 우유 함유']),
+  undefined
+);
+assert.equal(extractProductName(['原材料名: 小麦粉、砂糖', '内容量 100g']), undefined);
+assert.equal(extractProductName(['Ingredients: Wheat Flour, Sugar', 'Net Wt 100g']), undefined);
+
 // nothing name-like -> undefined, so the caller can fall back to the scan date
 assert.equal(extractProductName(['100g', '8801234567890']), undefined);
 assert.equal(extractProductName([]), undefined);

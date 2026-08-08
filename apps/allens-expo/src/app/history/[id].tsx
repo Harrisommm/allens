@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { findAllergenMatches, splitByMatches } from '@/services/allergy-matcher';
+import { findAllergenMatches, matchedAllergenNames, splitByMatches } from '@/services/allergy-matcher';
 import { useAllergies } from '@/store/allergies';
 import { useScanHistory } from '@/store/scan-history';
 
@@ -10,9 +11,13 @@ export default function HistoryDetailScreen() {
   const params = useLocalSearchParams<{ id?: string }>();
   const scan = useScanHistory((state) => (params.id ? state.getScanById(params.id) : undefined));
   const removeScan = useScanHistory((state) => state.removeScan);
-  // ponytail: highlights are recomputed from the *current* profile, so editing
-  // your allergies re-colours old scans. Snapshot the match ranges onto the scan
-  // if they ever need to stay frozen at scan time.
+  const renameScan = useScanHistory((state) => state.renameScan);
+  // The stack hides its header, so every screen has to clear the status bar
+  // and Dynamic Island itself.
+  const insets = useSafeAreaInsets();
+  // Matches are never stored. Badge and highlighting both derive from the
+  // *current* profile, so editing your allergies re-judges old scans and the
+  // two can never contradict each other.
   const selected = useAllergies((state) => state.selected);
   const custom = useAllergies((state) => state.custom);
   const allergens = useMemo(() => useAllergies.getState().activeAllergens(), [selected, custom]);
@@ -27,7 +32,14 @@ export default function HistoryDetailScreen() {
     );
   }
 
-  const isRisky = scan.highlightedIngredients.length > 0;
+  // Derived from the current profile, exactly like the highlighting below.
+  // Reading a stored snapshot here is what let the text turn red while the
+  // badge still claimed "Safe".
+  const matched = matchedAllergenNames([
+    ...findAllergenMatches(scan.translatedText, allergens),
+    ...findAllergenMatches(scan.originalText, allergens),
+  ]);
+  const isRisky = matched.length > 0;
 
   const renderHighlighted = (text: string) => (
     <Text style={styles.body}>
@@ -40,14 +52,26 @@ export default function HistoryDetailScreen() {
   );
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView contentContainerStyle={[styles.container, { paddingTop: insets.top + 24 }]}>
       <View style={[styles.badge, isRisky ? styles.badgeDanger : styles.badgeSafe]}>
         <Text style={[styles.badgeText, isRisky ? styles.badgeTextDanger : styles.badgeTextSafe]}>
-          {isRisky ? `Danger · ${scan.highlightedIngredients.join(', ')}` : 'Safe · no matches'}
+          {isRisky ? `Danger · ${matched.join(', ')}` : 'Safe · no matches'}
         </Text>
       </View>
 
-      <Text style={styles.title}>{scan.title}</Text>
+      {/* Uncontrolled on purpose: the store is only touched when editing ends,
+          so typing doesn't re-render the highlighted text below on every key. */}
+      <TextInput
+        style={styles.title}
+        defaultValue={scan.title}
+        placeholder="Name this scan"
+        placeholderTextColor="#cbd5e1"
+        returnKeyType="done"
+        onEndEditing={(event) => {
+          const next = event.nativeEvent.text.trim();
+          if (next && next !== scan.title) renameScan(scan.id, next);
+        }}
+      />
       <Text style={styles.meta}>{new Date(scan.createdAt).toLocaleString()}</Text>
 
       <View style={styles.section}>

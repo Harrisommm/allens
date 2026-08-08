@@ -31,9 +31,13 @@ export function extractProductName(lines: string[]): string | undefined {
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
-    if (SECTION_START.test(trimmed) || SECTION_END.test(trimmed) || ALLERGEN_NOTE.test(trimmed)) {
-      continue;
-    }
+
+    // The name is printed *before* the label's sections, so the first section
+    // header ends the search. Scanning past it is how an ingredients-only photo
+    // ends up titled "밀가루, 설탕, …" — undefined is the honest answer there,
+    // and it lets the caller fall back.
+    if (SECTION_START.test(trimmed) || SECTION_END.test(trimmed)) return undefined;
+    if (ALLERGEN_NOTE.test(trimmed)) continue;
 
     const letters = (trimmed.match(/\p{L}/gu) ?? []).length;
     const digits = (trimmed.match(/\d/g) ?? []).length;
