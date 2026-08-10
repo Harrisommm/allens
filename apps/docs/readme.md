@@ -10,56 +10,84 @@ Results are saved for later review.
 
 ---
 
-## Core Features (MVP)
-- 🔑 **Social login**: Google, Apple, Kakao, Naver (see Tech notes)
-- 👤 **Allergy setup**: pick from presets or add custom allergens
-- 📸 **Label scan**: camera capture or gallery import
-- 🧠 **On-device OCR**: extract ingredient text
-- 🌐 **Automatic translation**: detected text is translated into the user's language for clearer understanding
-- 🚫 **Allergy match & highlight**: risky terms in red; caution phrases in orange
-- 💾 **Scan history**: store and revisit past scans
+## Core Features
 
-> Note: **shareable image export** is planned for later releases (see Future Ideas).
+### Shipping today
+- 🔑 **Google login** via Firebase Authentication
+- 👤 **Allergy setup**: pick from presets or add custom allergens
+- 📸 **Label scan**: camera capture
+- 🧠 **On-device OCR**: Korean *and* Japanese ML Kit models run in parallel, longer read wins
+- ✂️ **Ingredient trimming**: the ingredient block is isolated from the rest of the package, keeping "contains milk"-style advisories that sit outside it
+- 🌐 **Automatic translation**: detected text is translated into the app's language
+- 🚫 **Allergy match & highlight**: matches painted red, against both the original and the translated text
+- 💾 **Scan history**: stored on-device, revisitable
+
+### Still spec, not code
+- Apple / Kakao / Naver login
+- Gallery import
+- Firestore sync for history
+- A caution (orange) tier — today a scan is Danger or Safe
+- Shareable image export (see Future Ideas)
 
 ---
 
 ## Tech Stack
-- **App framework:** Expo (Managed) + React Native
-- **Camera:** `react-native-vision-camera`
-- **OCR:** Google **ML Kit Text Recognition** (on-device)
-- **Translation:** Google Cloud Translation API
-- **Auth & DB:** **Firebase Authentication + Cloud Firestore**
-- **State:** Zustand (or Redux Toolkit)
-- **Crash/Analytics:** Firebase Crashlytics / Analytics
+- **App framework:** Expo + React Native, Expo Router
+- **Camera:** `expo-camera`
+- **OCR:** `@react-native-ml-kit/text-recognition` — Google **ML Kit**, on-device
+- **Translation:** Google Cloud Translation REST API; target language from `expo-localization`
+- **Auth:** **Firebase Authentication** (native `@react-native-firebase`) + Google Sign-In
+- **Storage:** Zustand, persisted to AsyncStorage. Firestore is planned, not wired up.
+- **Crash reporting:** Firebase Crashlytics
 - **CI/CD:** Expo EAS → TestFlight / Play Console
+
+> ⚠️ Native Firebase and ML Kit mean the app **will not run in Expo Go** — it needs a
+> dev build (`eas build --profile development`).
 
 ---
 
 ## Project Structure
-- `src/app/_layout.tsx`: Expo Router stack host + SafeAreaProvider configuration.
-- `src/app/index.tsx`: current MVP storyboard describing the end-to-end scan flow.
-- `src/components/*`: shareable UI primitives (CTA button, section heading, feature cards).
-- `src/lib/features.ts`: single source of truth for the onboarding/scan/user stories rendered in the UI.
+All app code lives in `apps/allens-expo` — run every command from there, not the repo root.
 
-With `expo-router/entry` as the app entry point and `app.json` pointing `extra.router.appRoot` to `src/app`, new screens can be added simply by creating new files/folders under that directory (e.g., `src/app/(auth)/login.tsx`, `src/app/(tabs)/camera.tsx`, etc.).
+- `src/app/` — Expo Router routes: `_layout.tsx` (stack host, SafeAreaProvider, and the
+  `onAuthStateChanged` subscription), `index.tsx`, `camera.tsx`, `history/`,
+  `(auth)/login.tsx`, `(setup)/allergies.tsx`.
+- `src/components/` — UI primitives, plus `firebase-auth/google-auth.tsx`.
+- `src/services/` — `ocr.ts`, `translation.ts`, `label-text.ts` (ingredient-block trimming),
+  `allergy-matcher.ts` (pure; also owns the `PRESET_ALLERGENS` alias table). The two
+  `*.check.ts` files are runnable self-checks, not a test framework.
+- `src/store/` — Zustand: `auth` (mirrors Firebase), `allergies` and `scan-history`
+  (both persisted to AsyncStorage).
+
+With `expo-router/entry` as the app entry point and `app.json` pointing `extra.router.appRoot` to `src/app`, new screens can be added simply by creating new files/folders under that directory.
+
+### How a scan flows
+`camera.tsx` → OCR → ingredient-block trim → translate → match against **both** the raw
+and translated text → save to history → open `history/[id]`, which recomputes match
+positions to paint them red.
+
+The alias table is the offline fail-safe: it carries en/ko/ja spellings and is matched
+against the *raw* OCR text, so a missing API key or dead network can never turn a risky
+label green. The danger flag must never depend on translation succeeding.
 
 ---
 
 ## UX / UI
 - Single-pass flow: **Scan → Translate → Review → Save**
 - “Food Info Card” layout per scan:
-  - Top: risk badge (Safe / Caution / Danger)
+  - Top: risk badge — **Danger** (with the matched allergens named) or **Safe**
   - Middle: ingredient text with highlighted matches
   - Bottom: date + quick notes
-- Colors: Red (confirmed allergen), Orange (caution), Gray (safe)
+- Colors: Red (confirmed allergen), Green (safe). Orange/caution is a future tier.
 
 ---
 
 ## Privacy & Safety
-- OCR and translation run on-device or via secure cloud APIs.
-- Original images remain local by default; only text data syncs if the user opts in.
+- OCR runs entirely on-device. Only the extracted text leaves the device, and only to
+  the translation API.
+- Today **nothing syncs** — images stay local and history lives in AsyncStorage. Opt-in
+  cloud sync arrives with Firestore.
 - No location or personally identifiable information (PII) is stored.
-- Users can delete all synced data at any time.
 
 ---
 
@@ -86,22 +114,24 @@ With `expo-router/entry` as the app entry point and `app.json` pointing `extra.r
 Setup instructions for contributors and developers.
 
 ### Requirements
-- Node.js ≥ 20  
-- pnpm ≥ 9  
-- Expo CLI (managed with pnpm)  
-- Android Studio / Xcode (for emulators)  
-- Firebase project (Authentication + Firestore enabled)
+- Node.js ≥ 22.6 (the self-checks run under `node --experimental-strip-types`)
+- pnpm (lockfile + `packageManager` field — pnpm only)
+- Android Studio / Xcode
+- A Firebase project with Authentication enabled. `GoogleService-Info.plist` and
+  `google-services.json` are gitignored and must be present before any native build.
 
 ### Install & Run
+Run everything from `apps/allens-expo`.
+
 ```bash
-# Install dependencies
 pnpm install
 
-# Start Expo dev server
-pnpm run start
-# or
-pnpm run ios
-pnpm run android
+pnpm start          # expo start (needs a dev build, not Expo Go)
+pnpm ios | pnpm android
+
+pnpm typecheck      # tsc --noEmit
+pnpm check          # allergen matcher + label-text self-checks
+pnpm exec expo export --platform android --dev   # bundle smoke test, same as CI
 ```
 
 ### App Icon
@@ -116,6 +146,9 @@ so a fresh `expo prebuild` also regenerates the native slot from `assets/icon.pn
 3. For CI/EAS builds, mirror the same secrets via `eas secret:create --scope project --name <NAME> --value <VALUE>`.
 
 ### Continuous Integration
-- GitHub Actions workflow (`.github/workflows/ci.yml`) runs pnpm install + TypeScript checks on every push/PR.
-- When `EXPO_TOKEN`, `EXPO_USERNAME`, `EXPO_PASSWORD` secrets are configured in the repo, the `eas-preview` job triggers `eas build --platform android --profile preview --non-interactive` to ship an APK artifact.
-- Extend the workflow with lint/tests (e.g., `pnpm run lint`, Jest) once those scripts exist. 
+`.github/workflows/ci.yml` runs on every PR and on pushes to `main`, in one `bundle` job:
+typecheck → the self-checks → `expo export --platform android --dev`. It requires the
+`EXPO_TOKEN` secret and fails fast without it; a failed export uploads its output as an
+artifact for debugging.
+
+There is no lint or unit-test framework — the `*.check.ts` self-checks stand in for one.
