@@ -1,5 +1,5 @@
 """allens app icon: a lens over a red allergen dot. Pure stdlib PNG writer."""
-import math, struct, zlib, sys
+import math, os, struct, zlib, sys
 
 SLATE = (0x0f, 0x17, 0x2a)
 WHITE = (0xf8, 0xfa, 0xfc)
@@ -96,12 +96,11 @@ if __name__ == "__main__":
     out = sys.argv[1].rstrip("/")
     full = render(1024)
     write_png(f"{out}/icon.png", 1024, full)
-    write_png(
-        f"{out}/../ios/allens/Images.xcassets/AppIcon.appiconset/App-Icon-1024x1024@1x.png",
-        1024,
-        full,
-        alpha=False,
-    )
+    # ios/ is gitignored, so it only exists after a prebuild. When it doesn't,
+    # the next prebuild will regenerate the slot from icon.png anyway.
+    native = f"{out}/../ios/allens/Images.xcassets/AppIcon.appiconset"
+    if os.path.isdir(native):
+        write_png(f"{native}/App-Icon-1024x1024@1x.png", 1024, full, alpha=False)
     # adaptive foreground: art shrunk into Android's safe zone, bg comes from app.json
     write_png(f"{out}/adaptive-icon.png", 1024, render(1024, scale=0.62, tile="clear"))
     write_png(f"{out}/splash-icon.png", 512, render(512, scale=0.75, tile="round"))
