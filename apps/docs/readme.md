@@ -104,6 +104,12 @@ pnpm run ios
 pnpm run android
 ```
 
+### App Icon
+The icon is generated, not hand-drawn. `python3 assets/make-icons.py assets` redraws
+`icon.png`, `adaptive-icon.png`, `splash-icon.png`, `favicon.png` and the iOS `AppIcon`
+slot from one model — stdlib only, no ImageMagick or PIL needed. `ios/` is gitignored,
+so a fresh `expo prebuild` also regenerates the native slot from `assets/icon.png`.
+
 ### Environment Variables
 1. Copy `.env.example` to `.env` and fill in your keys (Expo token, Firebase config, Google APIs, OAuth client IDs).
 2. Prefix any values that must be accessible in the client bundle with `EXPO_PUBLIC_`.
