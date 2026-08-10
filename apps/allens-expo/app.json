@@ -16,12 +16,25 @@
     "ios": {
       "supportsTablet": true,
       "googleServicesFile": "./GoogleService-Info.plist",
-      "bundleIdentifier": "com.allens.app"
+      "bundleIdentifier": "com.allens.app",
+      "infoPlist": {
+        "UIApplicationSceneManifest": {
+          "UIApplicationSupportsMultipleScenes": false,
+          "UISceneConfigurations": {
+            "UIWindowSceneSessionRoleApplication": [
+              {
+                "UISceneConfigurationName": "Default Configuration",
+                "UISceneDelegateClassName": "$(PRODUCT_MODULE_NAME).SceneDelegate"
+              }
+            ]
+          }
+        }
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#0f172a"
       },
       "edgeToEdgeEnabled": true,
       "googleServicesFile": "./google-services.json",
@@ -47,18 +60,32 @@
         {
           "ios": {
             "useFrameworks": "static",
-            "forceStaticLinking": ["RNFBApp", "RNFBAuth", "RNFBCrashlytics"],
+            "forceStaticLinking": [
+              "RNFBApp",
+              "RNFBAuth",
+              "RNFBCrashlytics"
+            ],
             "deploymentTarget": "15.5"
           }
         }
       ],
       "expo-router",
       [
+        "expo-localization",
+        {
+          "supportedLocales": {
+            "ios": ["en", "ko", "ja"],
+            "android": ["en", "ko", "ja"]
+          }
+        }
+      ],
+      [
         "./plugins/with-pod-deployment-target",
         {
           "deploymentTarget": "15.5"
         }
-      ]
+      ],
+      "./plugins/with-scene-delegate"
     ],
     "extra": {
       "router": {
@@ -66,7 +93,7 @@
       },
       "eas": {
         "projectId": "e16db728-7b33-42b7-ba4b-0e26ee42816f"
-      } 
+      }
     },
     "owner": "harrisom"
   }

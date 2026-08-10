@@ -6,7 +6,13 @@
  */
 import assert from 'node:assert/strict';
 
-import { findAllergenMatches, matchedAllergenNames, splitByMatches, type Allergen } from './allergy-matcher.ts';
+import {
+  PRESET_ALLERGENS,
+  findAllergenMatches,
+  matchedAllergenNames,
+  splitByMatches,
+  type Allergen,
+} from './allergy-matcher.ts';
 
 const allergens: Allergen[] = [
   { name: 'Milk', aliases: ['milk', '우유'] },
@@ -42,5 +48,31 @@ const overlap: Allergen[] = [{ name: 'Soy', aliases: ['soy', 'soy lecithin'] }];
 const overlapping = splitByMatches('Soy Lecithin', findAllergenMatches('Soy Lecithin', overlap));
 assert.equal(overlapping.map((s) => s.text).join(''), 'Soy Lecithin');
 assert.equal(overlapping.filter((s) => s.allergen).length, 1);
+
+// --- the shipped alias table ----------------------------------------------
+//
+// These run against PRESET_ALLERGENS itself, on raw label text with no
+// translation anywhere. This is the fail-safe: if translation is unavailable —
+// no API key, no network, dead quota — the danger flag still has to fire.
+// A regression here shows the user a green "Safe" badge on a risky label.
+
+const flags = (text: string) => matchedAllergenNames(findAllergenMatches(text, PRESET_ALLERGENS));
+
+// Japanese
+assert.deepEqual(flags('原材料名: 小麦粉、砂糖、全粉乳、大豆油'), ['Wheat', 'Milk', 'Soy']);
+assert.deepEqual(flags('本品には乳成分・落花生を含みます'), ['Milk', 'Peanut']);
+assert.deepEqual(flags('原材料: えび、かに、卵、そば'), ['Shellfish', 'Egg', 'Buckwheat']);
+
+// Korean and English still match on the raw label, unchanged
+assert.deepEqual(flags('원재료명: 밀가루, 전지분유(우유), 대두유'), ['Wheat', 'Milk', 'Soy']);
+assert.deepEqual(flags('Ingredients: Wheat Flour, Skim Milk Powder, Soy Lecithin'), [
+  'Wheat',
+  'Milk',
+  'Soy',
+]);
+
+// a label with none of them stays clean in every script
+assert.deepEqual(flags('原材料名: 水、砂糖、食塩'), []);
+assert.deepEqual(flags('원재료명: 정제수, 설탕, 소금'), []);
 
 console.log('allergy-matcher: all checks passed');

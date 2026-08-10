@@ -2,11 +2,11 @@ import { useRef, useState } from 'react';
 import { router } from 'expo-router';
 import { CameraType, CameraView, useCameraPermissions } from 'expo-camera';
 import { ActivityIndicator, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { detectIngredientsAsync } from '@/services/ocr';
 import { deviceLanguage, translateTextAsync } from '@/services/translation';
-import { findAllergenMatches, matchedAllergenNames } from '@/services/allergy-matcher';
 import { useAllergies } from '@/store/allergies';
 import { useScanHistory } from '@/store/scan-history';
 
@@ -16,6 +16,8 @@ export default function CameraScreen() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const cameraRef = useRef<CameraView>(null);
+  // The preview stays full-bleed; only the overlay controls clear the Dynamic Island.
+  const insets = useSafeAreaInsets();
   const addScan = useScanHistory((state) => state.addScan);
   const selectedCount = useAllergies((state) => state.selected.length);
 
@@ -32,25 +34,26 @@ export default function CameraScreen() {
       const ocr = await detectIngredientsAsync(photo.uri);
 
       setStatus('Translating…');
-      const translated = await translateTextAsync(ocr.text, deviceLanguage());
+      const targetLanguage = deviceLanguage();
+      const translated = await translateTextAsync(ocr.text, targetLanguage);
 
-      // Match both texts: the label's own language and the translation. Either
-      // one alone can miss an allergen the other spells out.
-      const allergens = useAllergies.getState().activeAllergens();
-      const matches = matchedAllergenNames([
-        ...findAllergenMatches(translated, allergens),
-        ...findAllergenMatches(ocr.text, allergens),
-      ]);
-
-      const id = Date.now().toString();
+      // Nothing about the match is stored. Both history screens recompute it
+      // from the *current* allergy profile, so switching Milk on later re-flags
+      // every old scan instead of leaving a stale "Safe" badge behind.
+      const scannedAt = new Date();
+      const id = scannedAt.getTime().toString();
       addScan({
         id,
-        title: ocr.title ?? 'Scanned label',
+        // We usually photograph just the ingredients panel, where no product
+        // name is printed, so lead with the ingredients themselves — both
+        // history views already show the date next to the title, which made a
+        // date-only title redundant. Rename it from the detail screen.
+        title: ocr.title ?? (ocr.text.trim().slice(0, 40) || scannedAt.toLocaleString()),
         originalText: ocr.text,
         translatedText: translated,
-        highlightedIngredients: matches,
+        targetLanguage,
         imageUri: photo.uri,
-        createdAt: new Date().toISOString(),
+        createdAt: scannedAt.toISOString(),
       });
 
       setStatus(null);
@@ -102,7 +105,7 @@ export default function CameraScreen() {
     <View style={styles.container}>
       <CameraView ref={cameraRef} style={styles.camera} facing={facing} />
       <View style={styles.overlay}>
-        <View style={styles.topBar}>
+        <View style={[styles.topBar, { marginTop: insets.top }]}>
           <TouchableOpacity onPress={() => router.push('/(setup)/allergies')}>
             <Text style={styles.topBarLink}>Allergies</Text>
           </TouchableOpacity>
@@ -159,7 +162,6 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 32,
   },
   topBarLink: {
     color: '#f8fafc',

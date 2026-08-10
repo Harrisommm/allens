@@ -2,27 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import type { Allergen } from '@/services/allergy-matcher';
-
-/**
- * Aliases cover English and Korean because a scan is matched against both the
- * original label text and its translation. Add spellings freely — an extra
- * alias only ever makes the app more cautious.
- */
-export const PRESET_ALLERGENS: Allergen[] = [
-  { name: 'Milk', aliases: ['milk', 'dairy', 'butter', 'cheese', 'cream', 'whey', 'casein', 'lactose', '우유', '유당', '유청', '치즈', '버터', '크림', '분유'] },
-  { name: 'Egg', aliases: ['egg', 'albumin', '계란', '달걀', '난백', '난황'] },
-  { name: 'Peanut', aliases: ['peanut', 'groundnut', '땅콩'] },
-  { name: 'Tree nut', aliases: ['almond', 'walnut', 'cashew', 'hazelnut', 'pecan', 'pistachio', 'macadamia', '아몬드', '호두', '캐슈', '헤이즐넛', '피스타치오', '잣'] },
-  { name: 'Soy', aliases: ['soy', 'soya', 'soybean', 'tofu', 'edamame', '대두', '두부', '간장', '된장'] },
-  { name: 'Wheat', aliases: ['wheat', 'gluten', 'flour', 'barley', 'rye', '밀', '밀가루', '글루텐', '보리', '호밀'] },
-  { name: 'Shellfish', aliases: ['shrimp', 'prawn', 'crab', 'lobster', 'shellfish', 'oyster', 'clam', 'mussel', '새우', '게', '랍스터', '조개', '굴', '홍합'] },
-  { name: 'Fish', aliases: ['fish', 'anchovy', 'tuna', 'salmon', 'cod', '생선', '멸치', '참치', '연어', '어육'] },
-  { name: 'Sesame', aliases: ['sesame', 'tahini', '참깨', '깨', '참기름'] },
-  { name: 'Buckwheat', aliases: ['buckwheat', '메밀'] },
-  { name: 'Pork', aliases: ['pork', 'bacon', 'lard', '돼지고기', '돈육'] },
-  { name: 'Sulfites', aliases: ['sulfite', 'sulphite', 'aspartame', '아황산'] },
-];
+import { PRESET_ALLERGENS, type Allergen } from '@/services/allergy-matcher';
 
 type AllergyState = {
   /** Names of selected allergens — preset or custom. */

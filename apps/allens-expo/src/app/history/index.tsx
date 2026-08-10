@@ -1,26 +1,43 @@
 import { useMemo } from 'react';
 import { Link } from 'expo-router';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { findAllergenMatches, matchedAllergenNames } from '@/services/allergy-matcher';
+import { useAllergies } from '@/store/allergies';
 import { useScanHistory } from '@/store/scan-history';
 
 export default function HistoryScreen() {
   const scans = useScanHistory((state) => state.scans);
   const empty = scans.length === 0;
+  // The stack hides its header, so every screen has to clear the status bar
+  // and Dynamic Island itself.
+  const insets = useSafeAreaInsets();
+  // activeAllergens() returns a fresh array, so select the raw state and derive.
+  const selected = useAllergies((state) => state.selected);
+  const custom = useAllergies((state) => state.custom);
+  const allergens = useMemo(() => useAllergies.getState().activeAllergens(), [selected, custom]);
 
+  // Re-judged against the *current* profile rather than a snapshot taken at scan
+  // time, so turning Milk on re-flags every old scan in this list too.
   const data = useMemo(
     () =>
-      scans.map((scan) => ({
-        ...scan,
-        subtitle: scan.highlightedIngredients.length
-          ? `⚠ ${scan.highlightedIngredients.join(', ')}`
-          : '✓ No matches',
-      })),
-    [scans]
+      scans.map((scan) => {
+        const matched = matchedAllergenNames([
+          ...findAllergenMatches(scan.translatedText, allergens),
+          ...findAllergenMatches(scan.originalText, allergens),
+        ]);
+        return {
+          ...scan,
+          matched,
+          subtitle: matched.length ? `⚠ ${matched.join(', ')}` : '✓ No matches',
+        };
+      }),
+    [scans, allergens]
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top + 24 }]}>
       <Text style={styles.title}>Scan history</Text>
       {empty ? (
         <Text style={styles.empty}>No scans yet. Capture a label to see it here.</Text>
@@ -39,7 +56,7 @@ export default function HistoryScreen() {
                 <Text
                   style={[
                     styles.cardMeta,
-                    item.highlightedIngredients.length === 0 && styles.cardMetaSafe,
+                    item.matched.length === 0 && styles.cardMetaSafe,
                   ]}
                 >
                   {item.subtitle}
