@@ -1,10 +1,9 @@
 import TextRecognition, { TextRecognitionScript } from '@react-native-ml-kit/text-recognition';
 
-import { extractIngredientSection, extractProductName } from './label-text';
+import { extractIngredientSection } from './label-text';
 
 export type OcrResult = {
   text: string;
-  title?: string;
 };
 
 /**
@@ -40,8 +39,5 @@ export async function detectIngredientsAsync(imageUri: string): Promise<OcrResul
     // Ingredients only — the brand, address, phone number and nutrition table
     // are noise that produce false matches and clutter the saved scan.
     text: extractIngredientSection(lines).join(' '),
-    // Undefined when the package has no readable name — the caller falls back
-    // to the scan date rather than showing a barcode or a weight.
-    title: extractProductName(lines),
   };
 }

@@ -30,6 +30,7 @@ export default function HistoryScreen() {
         return {
           ...scan,
           matched,
+          stamp: new Date(scan.createdAt).toLocaleString(),
           subtitle: matched.length ? `⚠ ${matched.join(', ')}` : '✓ No matches',
         };
       }),
@@ -50,8 +51,10 @@ export default function HistoryScreen() {
             <Link href={`/history/${item.id}`} asChild>
               <TouchableOpacity style={styles.card}>
                 <View style={styles.cardHeader}>
-                  <Text style={styles.cardTitle}>{item.title}</Text>
-                  <Text style={styles.cardSubtitle}>{new Date(item.createdAt).toLocaleString()}</Text>
+                  {/* Untitled scans are their date — showing it twice would be
+                      the only thing a stamp-only header could say. */}
+                  <Text style={styles.cardTitle}>{item.title ?? item.stamp}</Text>
+                  {item.title ? <Text style={styles.cardSubtitle}>{item.stamp}</Text> : null}
                 </View>
                 <Text
                   style={[

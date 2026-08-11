@@ -20,36 +20,6 @@ const ALLERGEN_NOTE =
   /알레르기|알러지|유발\s*물질|함유|혼입|アレルギ|含みます|含む|一部に|contains|may\s+contain/i;
 
 /**
- * The product name is whatever is printed before the label's own sections
- * start. Lines that are mostly digits are weights, barcodes, dates and phone
- * numbers rather than names.
- *
- * Returns undefined when nothing on the package looks like a name, which lets
- * the caller fall back to the scan date.
- */
-export function extractProductName(lines: string[]): string | undefined {
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-
-    // The name is printed *before* the label's sections, so the first section
-    // header ends the search. Scanning past it is how an ingredients-only photo
-    // ends up titled "밀가루, 설탕, …" — undefined is the honest answer there,
-    // and it lets the caller fall back.
-    if (SECTION_START.test(trimmed) || SECTION_END.test(trimmed)) return undefined;
-    if (ALLERGEN_NOTE.test(trimmed)) continue;
-
-    const letters = (trimmed.match(/\p{L}/gu) ?? []).length;
-    const digits = (trimmed.match(/\d/g) ?? []).length;
-    if (letters < 2 || digits >= letters) continue;
-
-    return trimmed.slice(0, 60);
-  }
-
-  return undefined;
-}
-
-/**
  * Keeps the ingredient block plus any allergen advisory, and drops the rest of
  * the package text (brand, address, phone number, nutrition table).
  *

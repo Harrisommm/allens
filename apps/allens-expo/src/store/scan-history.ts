@@ -4,7 +4,11 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 export type ScanHistoryItem = {
   id: string;
-  title: string;
+  /**
+   * Only ever set by hand. OCR can't reliably tell a product name from the rest
+   * of a label, so scans are titled by their date until the user renames one.
+   */
+  title?: string;
   originalText: string;
   translatedText: string;
   /** Language `translatedText` was translated into. Absent on scans saved before it was recorded. */
@@ -16,7 +20,7 @@ export type ScanHistoryItem = {
 type ScanHistoryState = {
   scans: ScanHistoryItem[];
   addScan: (item: ScanHistoryItem) => void;
-  /** OCR can't read a product name off an ingredients-only photo, so the user can set one. */
+  /** The only way a scan gets a title at all. */
   renameScan: (id: string, title: string) => void;
   removeScan: (id: string) => void;
   clear: () => void;
@@ -43,6 +47,14 @@ export const useScanHistory = create<ScanHistoryState>()(
       name: 'allens-scan-history',
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({ scans: state.scans }),
+      // v1 drops the OCR-guessed titles already on disk. None of them were
+      // chosen by the user, and they were the bad guesses this replaced.
+      version: 1,
+      migrate: (persisted) => ({
+        scans: ((persisted as { scans?: ScanHistoryItem[] })?.scans ?? []).map(
+          ({ title, ...scan }) => scan
+        ),
+      }),
     }
   )
 );

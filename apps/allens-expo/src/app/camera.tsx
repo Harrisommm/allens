@@ -44,11 +44,10 @@ export default function CameraScreen() {
       const id = scannedAt.getTime().toString();
       addScan({
         id,
-        // We usually photograph just the ingredients panel, where no product
-        // name is printed, so lead with the ingredients themselves — both
-        // history views already show the date next to the title, which made a
-        // date-only title redundant. Rename it from the detail screen.
-        title: ocr.title ?? (ocr.text.trim().slice(0, 40) || scannedAt.toLocaleString()),
+        // No title. OCR can't reliably pick the product name out of a label —
+        // we usually photograph just the ingredients panel, where it isn't even
+        // printed — so scans are listed by date until renamed from the detail
+        // screen.
         originalText: ocr.text,
         translatedText: translated,
         targetLanguage,
