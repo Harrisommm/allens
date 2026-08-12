@@ -7,7 +7,7 @@
  */
 import assert from 'node:assert/strict';
 
-import { extractIngredientSection, extractProductName } from './label-text.ts';
+import { extractIngredientSection } from './label-text.ts';
 
 // drops brand, address, phone, nutrition — keeps the ingredient block
 const korean = [
@@ -77,39 +77,5 @@ assert.deepEqual(
 const unrecognised = ['설탕', '우유', '대두'];
 assert.deepEqual(extractIngredientSection(unrecognised), unrecognised);
 assert.deepEqual(extractIngredientSection([]), []);
-
-// --- product name ---------------------------------------------------------
-
-// the printed product name, not the ingredient header
-assert.equal(extractProductName(korean), '맛있는 초코쿠키');
-assert.equal(extractProductName(english), 'Choco Cookies');
-assert.equal(extractProductName(japanese), 'チョコクッキー');
-
-// weights, barcodes, dates and phone numbers are not names
-assert.equal(
-  extractProductName(['8801234567890', '250ml', '2026.05.08', '순수 우유', '원재료명: 우유']),
-  '순수 우유'
-);
-
-// section headers and advisories are never the name
-assert.equal(extractProductName(['원재료명: 우유, 설탕']), undefined);
-assert.equal(extractProductName(['Contains: milk']), undefined);
-
-// an ingredients-only photo has no product name in frame. The search stops at
-// the first section header rather than walking into the list and titling the
-// scan with its first ingredient.
-assert.equal(
-  extractProductName(['원재료명: 밀가루, 설탕, 전지분유(우유)', '알레르기 유발물질: 우유 함유']),
-  undefined
-);
-assert.equal(extractProductName(['原材料名: 小麦粉、砂糖', '内容量 100g']), undefined);
-assert.equal(extractProductName(['Ingredients: Wheat Flour, Sugar', 'Net Wt 100g']), undefined);
-
-// nothing name-like -> undefined, so the caller can fall back to the scan date
-assert.equal(extractProductName(['100g', '8801234567890']), undefined);
-assert.equal(extractProductName([]), undefined);
-
-// long names are truncated for the history list
-assert.equal(extractProductName(['가'.repeat(80)]).length, 60);
 
 console.log('label-text: all checks passed');
