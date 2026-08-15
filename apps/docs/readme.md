@@ -16,10 +16,11 @@ Results are saved for later review.
 - 🔑 **Google login** via Firebase Authentication
 - 👤 **Allergy setup**: pick from presets or add custom allergens
 - 📸 **Label scan**: camera capture
-- 🧠 **On-device OCR**: Korean, Japanese *and* Chinese ML Kit models run in parallel, longer read wins
+- 🧠 **On-device OCR**: Korean, Japanese *and* Chinese ML Kit models run in parallel, longer read wins (the Korean model also reads Latin, so European and Vietnamese labels scan too)
 - ✂️ **Ingredient trimming**: the ingredient block is isolated from the rest of the package, keeping "contains milk"-style advisories that sit outside it
 - 🌐 **Automatic translation**: detected text is translated into the app's language
 - 🚫 **Allergy match & highlight**: matches painted red, against both the original and the translated text
+- 🗂️ **25 allergens across 9 languages**: the EU 14 and Korea's mandated 22, spelled in en/ko/ja/zh/es/it/fr/de/vi and matched offline, with no translation needed
 - 💾 **Scan history**: stored on-device, revisitable
 
 ### Still spec, not code

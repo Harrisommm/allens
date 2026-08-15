@@ -86,6 +86,65 @@ assert.deepEqual(
   ['配料表: 水、白砂糖', '過敏原信息: 含有大豆、雞蛋']
 );
 
+// Latin-script labels — Spanish and Italian ride on the English "ingredient",
+// French needs its own accented form, German and Vietnamese their own words
+const spanish = [
+  'Galletas de chocolate',
+  'Ingredientes: harina de trigo, azúcar, leche desnatada, aceite de soja',
+  'Peso neto 100 g',
+  'Información nutricional por 100 g',
+  'Fabricado por Alimentos Felices, Calle Mayor 12, Madrid',
+];
+const spanishTrimmed = extractIngredientSection(spanish);
+assert.deepEqual(spanishTrimmed, [
+  'Ingredientes: harina de trigo, azúcar, leche desnatada, aceite de soja',
+]);
+assert.ok(!spanishTrimmed.join(' ').includes('Madrid'), 'address must be dropped');
+
+assert.deepEqual(
+  extractIngredientSection([
+    'Biscotti',
+    'Ingredienti: farina di grano, zucchero, latte',
+    'Peso netto 100 g',
+    'Da consumarsi preferibilmente entro il 05/2026',
+  ]),
+  ['Ingredienti: farina di grano, zucchero, latte']
+);
+
+// "Ingrédients" would be missed by the English term — the accent breaks it
+const french = [
+  'Biscuits au chocolat',
+  'Ingrédients: farine de blé, sucre, lait, oeuf',
+  'Poids net 100 g',
+  'À consommer de préférence avant le 05/2026',
+  'Fabriqué par Aliments Heureux, 12 rue Principale, Paris',
+];
+const frenchTrimmed = extractIngredientSection(french);
+assert.deepEqual(frenchTrimmed, ['Ingrédients: farine de blé, sucre, lait, oeuf']);
+assert.ok(!frenchTrimmed.join(' ').includes('Paris'), 'address must be dropped');
+
+assert.deepEqual(
+  extractIngredientSection([
+    'Schokoladenkekse',
+    'Zutaten: Weizenmehl, Zucker, Milch, Hühnerei',
+    'Nettofüllmenge 100 g',
+    'Mindestens haltbar bis 05/2026',
+    'Kann Spuren von Erdnüssen enthalten',
+  ]),
+  ['Zutaten: Weizenmehl, Zucker, Milch, Hühnerei', 'Kann Spuren von Erdnüssen enthalten']
+);
+
+assert.deepEqual(
+  extractIngredientSection([
+    'Bánh quy sô cô la',
+    'Thành phần: bột mì, đường, sữa, trứng',
+    'Khối lượng tịnh 100 g',
+    'Hạn sử dụng 05/2026',
+    'Sản phẩm có thể chứa đậu phộng',
+  ]),
+  ['Thành phần: bột mì, đường, sữa, trứng', 'Sản phẩm có thể chứa đậu phộng']
+);
+
 // multi-line ingredient blocks stay whole
 assert.deepEqual(
   extractIngredientSection(['원재료명', '밀가루, 설탕,', '전지분유(우유)', '유통기한 별도표기']),
