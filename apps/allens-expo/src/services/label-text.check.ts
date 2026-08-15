@@ -67,6 +67,25 @@ assert.deepEqual(
   ['原材料名: 水、砂糖', '本品には乳成分・大豆を含みます']
 );
 
+// Chinese labels — 配料 opens the block, 净含量 and 保质期 close it
+const chinese = [
+  '巧克力饼干',
+  '上海幸福食品有限公司',
+  '配料: 小麦粉、白砂糖、全脂奶粉、大豆油',
+  '净含量 100克',
+  '保质期 12个月',
+  '地址: 上海市浦东新区某某路123号',
+];
+const chineseTrimmed = extractIngredientSection(chinese);
+assert.deepEqual(chineseTrimmed, ['配料: 小麦粉、白砂糖、全脂奶粉、大豆油']);
+assert.ok(!chineseTrimmed.join(' ').includes('浦东'), 'address must be dropped');
+
+// the Chinese advisory survives even though it sits past the section end
+assert.deepEqual(
+  extractIngredientSection(['配料表: 水、白砂糖', '淨含量 250毫升', '過敏原信息: 含有大豆、雞蛋']),
+  ['配料表: 水、白砂糖', '過敏原信息: 含有大豆、雞蛋']
+);
+
 // multi-line ingredient blocks stay whole
 assert.deepEqual(
   extractIngredientSection(['원재료명', '밀가루, 설탕,', '전지분유(우유)', '유통기한 별도표기']),

@@ -16,7 +16,7 @@ Results are saved for later review.
 - 🔑 **Google login** via Firebase Authentication
 - 👤 **Allergy setup**: pick from presets or add custom allergens
 - 📸 **Label scan**: camera capture
-- 🧠 **On-device OCR**: Korean *and* Japanese ML Kit models run in parallel, longer read wins
+- 🧠 **On-device OCR**: Korean, Japanese *and* Chinese ML Kit models run in parallel, longer read wins
 - ✂️ **Ingredient trimming**: the ingredient block is isolated from the rest of the package, keeping "contains milk"-style advisories that sit outside it
 - 🌐 **Automatic translation**: detected text is translated into the app's language
 - 🚫 **Allergy match & highlight**: matches painted red, against both the original and the translated text

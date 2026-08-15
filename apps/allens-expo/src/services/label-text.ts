@@ -1,23 +1,25 @@
 /** Starts the ingredient block. */
-const SECTION_START = /원재료\s*명?|성분\s*명?|원료\s*명?|原材料\s*名?|ingredients?/i;
+const SECTION_START = /원재료\s*명?|성분\s*명?|원료\s*명?|原材料\s*名?|配料\s*表?|原料\s*表?|ingredients?/i;
 
 /**
- * Any other section on the package — where the ingredient block ends. Korean
- * and Japanese spell several of these differently (내용량 vs 内容量), so both
- * forms are listed.
+ * Any other section on the package — where the ingredient block ends. Korean,
+ * Japanese and Chinese spell several of these differently (내용량 vs 内容量 vs
+ * 净含量), and Chinese labels come in both simplified and traditional, so every
+ * form is listed.
  */
 const SECTION_END =
-  /내용량|중량|영양\s*성분|유통\s*기한|소비\s*기한|제조\s*원|제조\s*사|제조\s*일|판매\s*원|판매\s*자|수입\s*원|보관\s*방법|반품|교환|고객\s*상담|소비자\s*상담|품목\s*보고\s*번호|식품\s*유형|포장\s*재질|주소|전화|홈페이지|内容量|賞味期限|消費期限|製造者|製造所|販売者|保存方法|栄養成分|nutrition|net\s*wt|calories|distributed\s*by|manufactured\s*by|best\s*before|expir|storage|customer\s*service/i;
+  /내용량|중량|영양\s*성분|유통\s*기한|소비\s*기한|제조\s*원|제조\s*사|제조\s*일|판매\s*원|판매\s*자|수입\s*원|보관\s*방법|반품|교환|고객\s*상담|소비자\s*상담|품목\s*보고\s*번호|식품\s*유형|포장\s*재질|주소|전화|홈페이지|内容量|賞味期限|消費期限|製造者|製造所|販売者|保存方法|栄養成分|净含量|淨含量|保质期|保質期|生产日期|生產日期|贮存|儲存|储存|生产商|生產商|制造商|製造商|经销商|經銷商|营养成分|營養成分|产品标准|產品標準|地址|电话|電話|nutrition|net\s*wt|calories|distributed\s*by|manufactured\s*by|best\s*before|expir|storage|customer\s*service/i;
 
 /**
  * Allergen advisories that legally sit *outside* the ingredient list
- * ("알레르기 유발물질: 우유, 대두 함유", "本品には乳成分を含みます", "Contains: milk").
+ * ("알레르기 유발물질: 우유, 대두 함유", "本品には乳成分を含みます",
+ * "过敏原信息: 含有牛奶、大豆", "Contains: milk").
  * These must survive the trim — they are often the only place an allergen is
  * named. Matching here only ever *keeps* a line, so broad terms are the safe
  * direction.
  */
 const ALLERGEN_NOTE =
-  /알레르기|알러지|유발\s*물질|함유|혼입|アレルギ|含みます|含む|一部に|contains|may\s+contain/i;
+  /알레르기|알러지|유발\s*물질|함유|혼입|アレルギ|含みます|含む|一部に|过敏|過敏|致敏|含有|可能含|同一?生产线|同一?生產線|contains|may\s+contain/i;
 
 /**
  * Keeps the ingredient block plus any allergen advisory, and drops the rest of

@@ -7,24 +7,33 @@ export type OcrResult = {
 };
 
 /**
+ * Each script needs its own model: the Korean one also reads Latin (so Korean
+ * and English labels come from that pass), kana needs the Japanese one, and
+ * hanzi needs the Chinese one. All three already ship in the native build.
+ */
+const SCRIPTS = [
+  TextRecognitionScript.KOREAN,
+  TextRecognitionScript.JAPANESE,
+  TextRecognitionScript.CHINESE,
+];
+
+/**
  * On-device text recognition (Google ML Kit).
  *
- * Each script needs its own model: the Korean one also reads Latin (so Korean
- * and English labels come from that pass), but kana and kanji need the Japanese
- * one. Both models already ship in the native build, so we simply run both and
- * keep the better read. They are independent native calls, so `Promise.all`
- * costs roughly one pass of wall-clock time.
+ * Every model gets a pass and the best read wins. They are independent native
+ * calls, so `Promise.all` costs roughly one pass of wall-clock time.
  */
 export async function detectIngredientsAsync(imageUri: string): Promise<OcrResult> {
-  const [korean, japanese] = await Promise.all([
-    TextRecognition.recognize(imageUri, TextRecognitionScript.KOREAN),
-    TextRecognition.recognize(imageUri, TextRecognitionScript.JAPANESE),
-  ]);
+  const reads = await Promise.all(
+    SCRIPTS.map((script) => TextRecognition.recognize(imageUri, script))
+  );
 
   // ponytail: "longest output wins" is a proxy for "right script" — the wrong
-  // model on a label returns little or nothing. Score by expected-script
-  // character ratio if a real label ever picks the wrong one.
-  const result = japanese.text.length > korean.text.length ? japanese : korean;
+  // model on a label returns little or nothing. Chinese and Japanese share most
+  // of their characters, so on a CJK label the two reads are close and either
+  // one carries the allergen terms, which are matched in both spellings anyway.
+  // Score by expected-script character ratio if a real label picks wrong.
+  const result = reads.reduce((best, read) => (read.text.length > best.text.length ? read : best));
 
   const lines = result.text
     .split('\n')

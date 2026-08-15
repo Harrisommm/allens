@@ -78,6 +78,14 @@ assert.deepEqual(flags('原材料名: 小麦粉、砂糖、全粉乳、大豆油
 assert.deepEqual(flags('本品には乳成分・落花生を含みます'), ['Milk', 'Peanut']);
 assert.deepEqual(flags('原材料: えび、かに、卵、そば'), ['Shellfish', 'Egg', 'Buckwheat']);
 
+// Chinese, simplified and traditional — a label prints one or the other
+assert.deepEqual(flags('配料: 小麦粉、白砂糖、全脂奶粉、大豆油'), ['Wheat', 'Milk', 'Soy']);
+assert.deepEqual(flags('配料表: 水、花生酱、芝麻'), ['Peanut', 'Sesame']);
+assert.deepEqual(flags('過敏原: 本產品含有蝦、蟹、雞蛋'), ['Shellfish', 'Egg']);
+// 荞麦 "buckwheat" contains 麦 "wheat", so it flags both — the safe direction
+assert.deepEqual(flags('配料: 鱼露、荞麦粉、猪肉'), ['Fish', 'Buckwheat', 'Wheat', 'Pork']);
+assert.deepEqual(flags('配料: 水、白砂糖、食用盐'), []);
+
 // Korean and English still match on the raw label, unchanged
 assert.deepEqual(flags('원재료명: 밀가루, 전지분유(우유), 대두유'), ['Wheat', 'Milk', 'Soy']);
 assert.deepEqual(flags('Ingredients: Wheat Flour, Skim Milk Powder, Soy Lecithin'), [
