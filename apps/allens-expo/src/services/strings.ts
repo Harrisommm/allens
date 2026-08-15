@@ -55,7 +55,6 @@ const en = {
   setupBody: 'Tell allens what to look for and every scan will flag it automatically.',
   chooseAllergies: 'Choose allergies',
   allergies: 'Allergies',
-  flip: 'Flip',
   history: 'History',
   scanLabel: 'Scan label',
 
@@ -107,7 +106,6 @@ const ko: Copy = {
   setupBody: '찾을 항목을 지정하면 스캔할 때마다 자동으로 표시합니다.',
   chooseAllergies: '알레르기 선택',
   allergies: '알레르기',
-  flip: '전환',
   history: '기록',
   scanLabel: '라벨 스캔',
 
@@ -156,7 +154,6 @@ const ja: Copy = {
   setupBody: '探す項目を指定すると、スキャンごとに自動で表示します。',
   chooseAllergies: 'アレルギーを選択',
   allergies: 'アレルギー',
-  flip: '切替',
   history: '履歴',
   scanLabel: 'ラベルをスキャン',
 

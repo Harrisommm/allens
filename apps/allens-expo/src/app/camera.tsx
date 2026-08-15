@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { router } from 'expo-router';
-import { CameraType, CameraView, useCameraPermissions } from 'expo-camera';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { ActivityIndicator, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -13,7 +13,6 @@ import { useScanHistory } from '@/store/scan-history';
 
 export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
-  const [facing, setFacing] = useState<CameraType>('back');
   const [isProcessing, setIsProcessing] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const cameraRef = useRef<CameraView>(null);
@@ -105,14 +104,12 @@ export default function CameraScreen() {
 
   return (
     <View style={styles.container}>
-      <CameraView ref={cameraRef} style={styles.camera} facing={facing} />
+      {/* Rear camera only — a label scanner has no use for the selfie cam. */}
+      <CameraView ref={cameraRef} style={styles.camera} facing="back" />
       <View style={styles.overlay}>
         <View style={[styles.topBar, { marginTop: insets.top }]}>
           <TouchableOpacity onPress={() => router.push('/(setup)/allergies')}>
             <Text style={styles.topBarLink}>{t.allergies}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setFacing((prev) => (prev === 'back' ? 'front' : 'back'))}>
-            <Text style={styles.topBarLink}>{t.flip}</Text>
           </TouchableOpacity>
         </View>
 
