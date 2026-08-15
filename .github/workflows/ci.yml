@@ -28,10 +28,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # No version pin here — the action reads `packageManager` from
+      # apps/allens-expo/package.json, so CI can't drift from local.
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
         with:
-          version: 10.20.0
+          package_json_file: apps/allens-expo/package.json
 
       - name: Setup Node
         uses: actions/setup-node@v4

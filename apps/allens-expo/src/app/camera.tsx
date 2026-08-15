@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { router } from 'expo-router';
 import { CameraType, CameraView, useCameraPermissions } from 'expo-camera';
 import { ActivityIndicator, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -16,6 +16,10 @@ export default function CameraScreen() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const cameraRef = useRef<CameraView>(null);
+  // Errors clear themselves after a few seconds; navigating away first must not
+  // leave the timer running against an unmounted screen.
+  const statusTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(statusTimer.current), []);
   // The preview stays full-bleed; only the overlay controls clear the Dynamic Island.
   const insets = useSafeAreaInsets();
   const addScan = useScanHistory((state) => state.addScan);
@@ -59,7 +63,7 @@ export default function CameraScreen() {
       router.push(`/history/${id}`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Scan failed. Try again.');
-      setTimeout(() => setStatus(null), 4000);
+      statusTimer.current = setTimeout(() => setStatus(null), 4000);
     } finally {
       setIsProcessing(false);
     }
@@ -78,7 +82,8 @@ export default function CameraScreen() {
       <View style={styles.permissionCard}>
         <Text style={styles.permissionTitle}>Camera permission</Text>
         <Text style={styles.permissionBody}>
-          allens needs the camera to read ingredient labels. Photos stay on this device.
+          allens needs the camera to read ingredient labels. Photos stay on this device; the
+          label text is sent to Google Translate.
         </Text>
         <PrimaryButton
           label={permission.canAskAgain ? 'Grant permission' : 'Open settings'}

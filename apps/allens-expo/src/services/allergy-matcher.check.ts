@@ -10,6 +10,7 @@ import {
   PRESET_ALLERGENS,
   findAllergenMatches,
   matchedAllergenNames,
+  scanAllergenNames,
   splitByMatches,
   type Allergen,
 } from './allergy-matcher.ts';
@@ -48,6 +49,20 @@ const overlap: Allergen[] = [{ name: 'Soy', aliases: ['soy', 'soy lecithin'] }];
 const overlapping = splitByMatches('Soy Lecithin', findAllergenMatches('Soy Lecithin', overlap));
 assert.equal(overlapping.map((s) => s.text).join(''), 'Soy Lecithin');
 assert.equal(overlapping.filter((s) => s.allergen).length, 1);
+
+// a scan is judged on both readings — either one alone can miss the allergen
+assert.deepEqual(
+  scanAllergenNames({ originalText: '원재료: 우유', translatedText: 'Ingredients: dairy' }, allergens),
+  ['Milk']
+);
+assert.deepEqual(
+  scanAllergenNames({ originalText: '원재료: 대두', translatedText: 'Ingredients: bean' }, allergens),
+  ['Soy']
+);
+assert.deepEqual(
+  scanAllergenNames({ originalText: 'Water, Sugar', translatedText: '정제수, 설탕' }, allergens),
+  []
+);
 
 // --- the shipped alias table ----------------------------------------------
 //

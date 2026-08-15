@@ -3,8 +3,8 @@ import { Link } from 'expo-router';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { findAllergenMatches, matchedAllergenNames } from '@/services/allergy-matcher';
-import { useAllergies } from '@/store/allergies';
+import { scanAllergenNames } from '@/services/allergy-matcher';
+import { useActiveAllergens } from '@/store/allergies';
 import { useScanHistory } from '@/store/scan-history';
 
 export default function HistoryScreen() {
@@ -13,20 +13,14 @@ export default function HistoryScreen() {
   // The stack hides its header, so every screen has to clear the status bar
   // and Dynamic Island itself.
   const insets = useSafeAreaInsets();
-  // activeAllergens() returns a fresh array, so select the raw state and derive.
-  const selected = useAllergies((state) => state.selected);
-  const custom = useAllergies((state) => state.custom);
-  const allergens = useMemo(() => useAllergies.getState().activeAllergens(), [selected, custom]);
+  const allergens = useActiveAllergens();
 
   // Re-judged against the *current* profile rather than a snapshot taken at scan
   // time, so turning Milk on re-flags every old scan in this list too.
   const data = useMemo(
     () =>
       scans.map((scan) => {
-        const matched = matchedAllergenNames([
-          ...findAllergenMatches(scan.translatedText, allergens),
-          ...findAllergenMatches(scan.originalText, allergens),
-        ]);
+        const matched = scanAllergenNames(scan, allergens);
         return {
           ...scan,
           matched,

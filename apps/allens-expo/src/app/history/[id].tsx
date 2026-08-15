@@ -1,10 +1,9 @@
-import { useMemo } from 'react';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { findAllergenMatches, matchedAllergenNames, splitByMatches } from '@/services/allergy-matcher';
-import { useAllergies } from '@/store/allergies';
+import { findAllergenMatches, scanAllergenNames, splitByMatches } from '@/services/allergy-matcher';
+import { useActiveAllergens } from '@/store/allergies';
 import { useScanHistory } from '@/store/scan-history';
 
 export default function HistoryDetailScreen() {
@@ -18,9 +17,7 @@ export default function HistoryDetailScreen() {
   // Matches are never stored. Badge and highlighting both derive from the
   // *current* profile, so editing your allergies re-judges old scans and the
   // two can never contradict each other.
-  const selected = useAllergies((state) => state.selected);
-  const custom = useAllergies((state) => state.custom);
-  const allergens = useMemo(() => useAllergies.getState().activeAllergens(), [selected, custom]);
+  const allergens = useActiveAllergens();
 
   if (!params.id) return <Redirect href="/history" />;
 
@@ -35,10 +32,7 @@ export default function HistoryDetailScreen() {
   // Derived from the current profile, exactly like the highlighting below.
   // Reading a stored snapshot here is what let the text turn red while the
   // badge still claimed "Safe".
-  const matched = matchedAllergenNames([
-    ...findAllergenMatches(scan.translatedText, allergens),
-    ...findAllergenMatches(scan.originalText, allergens),
-  ]);
+  const matched = scanAllergenNames(scan, allergens);
   const isRisky = matched.length > 0;
 
   const renderHighlighted = (text: string) => (
@@ -73,6 +67,19 @@ export default function HistoryDetailScreen() {
         }}
       />
       <Text style={styles.meta}>{new Date(scan.createdAt).toLocaleString()}</Text>
+
+      {/* The photo is the only part of a scan the app can't recompute — when OCR
+          mangles a line, this is where you read it yourself.
+          ponytail: it lives in the cache directory, so the OS may reclaim it and
+          leave a blank box. Copy it into documents if that ever bites. */}
+      {scan.imageUri ? (
+        <Image
+          source={{ uri: scan.imageUri }}
+          style={styles.photo}
+          resizeMode="cover"
+          accessibilityIgnoresInvertColors
+        />
+      ) : null}
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>
@@ -137,6 +144,12 @@ const styles = StyleSheet.create({
   },
   meta: {
     color: '#94a3b8',
+  },
+  photo: {
+    width: '100%',
+    aspectRatio: 3 / 4,
+    borderRadius: 16,
+    backgroundColor: '#f1f5f9',
   },
   section: {
     gap: 8,
