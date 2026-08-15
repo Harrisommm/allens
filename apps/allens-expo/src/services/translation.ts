@@ -1,5 +1,7 @@
 import { getLocales } from 'expo-localization';
 
+import { uiLanguageFrom, type UiLanguage } from './strings';
+
 /**
  * Google Cloud Translation (v2 REST) — plain fetch, no SDK needed.
  *
@@ -51,4 +53,14 @@ export function deviceLanguage(): string {
   if (language === 'zh') return locale?.languageScriptCode === 'Hant' ? 'zh-TW' : 'zh-CN';
 
   return language;
+}
+
+/**
+ * The language the app's own copy is written in — a much shorter list than the
+ * languages it can *translate into*. A Spanish speaker gets Spanish scan
+ * results and an English interface, which is the honest trade: bad UI copy in a
+ * safety app is worse than English copy.
+ */
+export function uiLanguage(): UiLanguage {
+  return uiLanguageFrom(getLocales()[0]?.languageCode);
 }

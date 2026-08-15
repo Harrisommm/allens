@@ -1,14 +1,18 @@
 import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
 import GoogleAuth from '@/components/firebase-auth/google-auth';
+import { strings } from '@/services/strings';
+import { uiLanguage } from '@/services/translation';
 
 export default function Login() {
+  const t = strings(uiLanguage());
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>allens</Text>
-          <Text style={styles.subtitle}>Scan before you eat — safety in one glance.</Text>
+          <Text style={styles.subtitle}>{t.tagline}</Text>
         </View>
         <GoogleAuth />
       </View>

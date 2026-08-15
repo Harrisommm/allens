@@ -7,6 +7,8 @@ import { PrimaryButton } from '@/components/PrimaryButton';
 import { SectionHeading } from '@/components/SectionHeading';
 import { signOutEverywhere } from '@/components/firebase-auth/google-auth';
 import { searchAllergens } from '@/services/allergy-matcher';
+import { allergenLabel, strings } from '@/services/strings';
+import { uiLanguage } from '@/services/translation';
 import { useAllergies } from '@/store/allergies';
 import { useAuth } from '@/store/auth';
 
@@ -18,6 +20,8 @@ export default function AllergySetupScreen() {
   // The stack hides its header, so every screen has to clear the status bar
   // and Dynamic Island itself.
   const insets = useSafeAreaInsets();
+  const language = uiLanguage();
+  const t = strings(language);
 
   const submitCustom = () => {
     addCustom(draft);
@@ -43,8 +47,9 @@ export default function AllergySetupScreen() {
       onLongPress={onLongPress}
       style={[styles.pill, selected.includes(name) && styles.pillSelected]}
     >
+      {/* The English name is the stored identity; only the label is translated. */}
       <Text style={[styles.pillText, selected.includes(name) && styles.pillTextSelected]}>
-        {name}
+        {allergenLabel(name, language)}
       </Text>
     </Pressable>
   );
@@ -52,21 +57,21 @@ export default function AllergySetupScreen() {
   return (
     <ScrollView contentContainerStyle={[styles.container, { paddingTop: insets.top + 24 }]}>
       <SectionHeading
-        title="Allergy profile"
-        subtitle="Pick everything you react to. Every scan is matched against this list."
+        title={t.allergyProfile}
+        subtitle={t.allergyProfileSubtitle}
       />
 
       <TextInput
         value={query}
         onChangeText={setQuery}
-        placeholder="Search allergens — milk, 우유, Sellerie…"
+        placeholder={t.searchPlaceholder}
         placeholderTextColor="#94a3b8"
         style={styles.search}
         returnKeyType="search"
         autoCorrect={false}
         autoCapitalize="none"
         clearButtonMode="while-editing"
-        accessibilityLabel="Search allergens"
+        accessibilityLabel={t.searchLabel}
       />
 
       {/* The Save button always shows the total, so a filtered view can never
@@ -74,25 +79,23 @@ export default function AllergySetupScreen() {
       <View style={styles.grid}>{presets.map(({ name }) => renderPill(name))}</View>
 
       {search && presets.length === 0 ? (
-        <Text style={styles.hint}>
-          No preset matches “{query.trim()}”. Add it as a custom allergen below.
-        </Text>
+        <Text style={styles.hint}>{t.noPresetMatch(query.trim())}</Text>
       ) : null}
 
       <View style={styles.customSection}>
-        <SectionHeading title="Custom" subtitle="Anything else, in the language on your labels." />
+        <SectionHeading title={t.custom} subtitle={t.customSubtitle} />
         <View style={styles.inputRow}>
           <TextInput
             value={draft}
             onChangeText={setDraft}
             onSubmitEditing={submitCustom}
-            placeholder="e.g. 메밀, mustard"
+            placeholder={t.customPlaceholder}
             placeholderTextColor="#94a3b8"
             style={styles.input}
             returnKeyType="done"
           />
           <Pressable onPress={submitCustom} style={styles.addButton} accessibilityRole="button">
-            <Text style={styles.addButtonText}>Add</Text>
+            <Text style={styles.addButtonText}>{t.add}</Text>
           </Pressable>
         </View>
 
@@ -100,18 +103,21 @@ export default function AllergySetupScreen() {
           {customMatches.map((name) => renderPill(name, () => removeCustom(name)))}
         </View>
         {customMatches.length > 0 ? (
-          <Text style={styles.hint}>Long-press a custom tag to delete it.</Text>
+          <Text style={styles.hint}>{t.longPressHint}</Text>
         ) : null}
       </View>
 
       <PrimaryButton
-        label={selected.length === 0 ? 'Select at least one' : `Save ${selected.length} & scan`}
+        label={selected.length === 0 ? t.selectAtLeastOne : t.saveAndScan(selected.length)}
         disabled={selected.length === 0}
         onPress={() => router.replace('/camera')}
       />
 
       <Pressable onPress={signOutEverywhere} style={styles.signOut} accessibilityRole="button">
-        <Text style={styles.signOutText}>Sign out{email ? ` · ${email}` : ''}</Text>
+        <Text style={styles.signOutText}>
+          {t.signOut}
+          {email ? ` · ${email}` : ''}
+        </Text>
       </Pressable>
     </ScrollView>
   );

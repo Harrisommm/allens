@@ -3,6 +3,8 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { findAllergenMatches, scanAllergenNames, splitByMatches } from '@/services/allergy-matcher';
+import { allergenLabels, strings } from '@/services/strings';
+import { uiLanguage } from '@/services/translation';
 import { useActiveAllergens } from '@/store/allergies';
 import { useScanHistory } from '@/store/scan-history';
 
@@ -18,13 +20,15 @@ export default function HistoryDetailScreen() {
   // *current* profile, so editing your allergies re-judges old scans and the
   // two can never contradict each other.
   const allergens = useActiveAllergens();
+  const language = uiLanguage();
+  const t = strings(language);
 
   if (!params.id) return <Redirect href="/history" />;
 
   if (!scan) {
     return (
       <View style={styles.missing}>
-        <Text style={styles.missingText}>Scan not found. Return to history and try again.</Text>
+        <Text style={styles.missingText}>{t.scanNotFound}</Text>
       </View>
     );
   }
@@ -49,7 +53,7 @@ export default function HistoryDetailScreen() {
     <ScrollView contentContainerStyle={[styles.container, { paddingTop: insets.top + 24 }]}>
       <View style={[styles.badge, isRisky ? styles.badgeDanger : styles.badgeSafe]}>
         <Text style={[styles.badgeText, isRisky ? styles.badgeTextDanger : styles.badgeTextSafe]}>
-          {isRisky ? `Danger · ${matched.join(', ')}` : 'Safe · no matches'}
+          {isRisky ? t.danger(allergenLabels(matched, language)) : t.safe}
         </Text>
       </View>
 
@@ -58,7 +62,7 @@ export default function HistoryDetailScreen() {
       <TextInput
         style={styles.title}
         defaultValue={scan.title}
-        placeholder="Name this scan"
+        placeholder={t.nameThisScan}
         placeholderTextColor="#cbd5e1"
         returnKeyType="done"
         onEndEditing={(event) => {
@@ -83,14 +87,15 @@ export default function HistoryDetailScreen() {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>
-          Translated text{scan.targetLanguage ? ` · ${scan.targetLanguage}` : ''}
+          {t.translatedText}
+          {scan.targetLanguage ? ` · ${scan.targetLanguage}` : ''}
         </Text>
         {renderHighlighted(scan.translatedText)}
       </View>
 
       {scan.originalText !== scan.translatedText ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Original text</Text>
+          <Text style={styles.sectionTitle}>{t.originalText}</Text>
           {renderHighlighted(scan.originalText)}
         </View>
       ) : null}
@@ -103,7 +108,7 @@ export default function HistoryDetailScreen() {
         }}
         style={styles.delete}
       >
-        <Text style={styles.deleteText}>Delete this scan</Text>
+        <Text style={styles.deleteText}>{t.deleteScan}</Text>
       </Pressable>
     </ScrollView>
   );

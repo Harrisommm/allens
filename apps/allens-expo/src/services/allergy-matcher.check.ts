@@ -15,6 +15,7 @@ import {
   splitByMatches,
   type Allergen,
 } from './allergy-matcher.ts';
+import { allergenLabel } from './strings.ts';
 
 const allergens: Allergen[] = [
   { name: 'Milk', aliases: ['milk', '우유'] },
@@ -222,5 +223,20 @@ for (const allergen of PRESET_ALLERGENS) {
     }
   }
 }
+
+// --- every preset has a display name in every UI language -------------------
+//
+// The copy tables are typechecked against `en`, but the allergen labels are
+// keyed by data, so a preset added without its Korean name would silently show
+// English on a Korean phone. Caught here instead.
+
+for (const allergen of PRESET_ALLERGENS) {
+  for (const language of ['ko', 'ja'] as const) {
+    const label = allergenLabel(allergen.name, language);
+    assert.notEqual(label, allergen.name, `${allergen.name}: no ${language} label`);
+  }
+}
+// custom allergens are user-typed, so they pass through untouched
+assert.equal(allergenLabel('mustard seed', 'ko'), 'mustard seed');
 
 console.log('allergy-matcher: all checks passed');

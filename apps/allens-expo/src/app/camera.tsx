@@ -5,8 +5,9 @@ import { ActivityIndicator, Linking, StyleSheet, Text, TouchableOpacity, View } 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PrimaryButton } from '@/components/PrimaryButton';
-import { detectIngredientsAsync } from '@/services/ocr';
-import { deviceLanguage, translateTextAsync } from '@/services/translation';
+import { NO_TEXT_FOUND, detectIngredientsAsync } from '@/services/ocr';
+import { strings } from '@/services/strings';
+import { deviceLanguage, translateTextAsync, uiLanguage } from '@/services/translation';
 import { useAllergies } from '@/store/allergies';
 import { useScanHistory } from '@/store/scan-history';
 
@@ -23,6 +24,7 @@ export default function CameraScreen() {
   // The preview stays full-bleed; only the overlay controls clear the Dynamic Island.
   const insets = useSafeAreaInsets();
   const addScan = useScanHistory((state) => state.addScan);
+  const t = strings(uiLanguage());
   const selectedCount = useAllergies((state) => state.selected.length);
 
   const handleCapture = async () => {
@@ -30,14 +32,14 @@ export default function CameraScreen() {
 
     try {
       setIsProcessing(true);
-      setStatus('Capturing photo…');
+      setStatus(t.capturing);
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.7 });
-      if (!photo?.uri) throw new Error('Could not save the photo. Try again.');
+      if (!photo?.uri) throw new Error(t.photoFailed);
 
-      setStatus('Reading the label…');
+      setStatus(t.reading);
       const ocr = await detectIngredientsAsync(photo.uri);
 
-      setStatus('Translating…');
+      setStatus(t.translating);
       const targetLanguage = deviceLanguage();
       const translated = await translateTextAsync(ocr.text, targetLanguage);
 
@@ -62,7 +64,8 @@ export default function CameraScreen() {
       setStatus(null);
       router.push(`/history/${id}`);
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : 'Scan failed. Try again.');
+      const message = error instanceof Error ? error.message : '';
+      setStatus(message === NO_TEXT_FOUND ? t.noTextFound : message || t.scanFailed);
       statusTimer.current = setTimeout(() => setStatus(null), 4000);
     } finally {
       setIsProcessing(false);
@@ -80,13 +83,10 @@ export default function CameraScreen() {
   if (!permission.granted) {
     return (
       <View style={styles.permissionCard}>
-        <Text style={styles.permissionTitle}>Camera permission</Text>
-        <Text style={styles.permissionBody}>
-          allens needs the camera to read ingredient labels. Photos stay on this device; the
-          label text is sent to Google Translate.
-        </Text>
+        <Text style={styles.permissionTitle}>{t.cameraPermission}</Text>
+        <Text style={styles.permissionBody}>{t.cameraPermissionBody}</Text>
         <PrimaryButton
-          label={permission.canAskAgain ? 'Grant permission' : 'Open settings'}
+          label={permission.canAskAgain ? t.grantPermission : t.openSettings}
           onPress={permission.canAskAgain ? requestPermission : Linking.openSettings}
         />
       </View>
@@ -96,11 +96,9 @@ export default function CameraScreen() {
   if (selectedCount === 0) {
     return (
       <View style={styles.permissionCard}>
-        <Text style={styles.permissionTitle}>Set up your allergies</Text>
-        <Text style={styles.permissionBody}>
-          Tell allens what to look for and every scan will flag it automatically.
-        </Text>
-        <PrimaryButton label="Choose allergies" onPress={() => router.push('/(setup)/allergies')} />
+        <Text style={styles.permissionTitle}>{t.setupTitle}</Text>
+        <Text style={styles.permissionBody}>{t.setupBody}</Text>
+        <PrimaryButton label={t.chooseAllergies} onPress={() => router.push('/(setup)/allergies')} />
       </View>
     );
   }
@@ -111,23 +109,23 @@ export default function CameraScreen() {
       <View style={styles.overlay}>
         <View style={[styles.topBar, { marginTop: insets.top }]}>
           <TouchableOpacity onPress={() => router.push('/(setup)/allergies')}>
-            <Text style={styles.topBarLink}>Allergies</Text>
+            <Text style={styles.topBarLink}>{t.allergies}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => setFacing((prev) => (prev === 'back' ? 'front' : 'back'))}>
-            <Text style={styles.topBarLink}>Flip</Text>
+            <Text style={styles.topBarLink}>{t.flip}</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.bottomBar}>
           <TouchableOpacity onPress={() => router.push('/history')}>
-            <Text style={styles.bottomLink}>History</Text>
+            <Text style={styles.bottomLink}>{t.history}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.shutter}
             onPress={handleCapture}
             disabled={isProcessing}
             accessibilityRole="button"
-            accessibilityLabel="Scan label"
+            accessibilityLabel={t.scanLabel}
           >
             {isProcessing ? <ActivityIndicator color="#0f172a" /> : null}
           </TouchableOpacity>

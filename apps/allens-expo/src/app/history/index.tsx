@@ -4,6 +4,8 @@ import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { scanAllergenNames } from '@/services/allergy-matcher';
+import { allergenLabels, strings } from '@/services/strings';
+import { uiLanguage } from '@/services/translation';
 import { useActiveAllergens } from '@/store/allergies';
 import { useScanHistory } from '@/store/scan-history';
 
@@ -14,6 +16,8 @@ export default function HistoryScreen() {
   // and Dynamic Island itself.
   const insets = useSafeAreaInsets();
   const allergens = useActiveAllergens();
+  const language = uiLanguage();
+  const t = strings(language);
 
   // Re-judged against the *current* profile rather than a snapshot taken at scan
   // time, so turning Milk on re-flags every old scan in this list too.
@@ -25,17 +29,17 @@ export default function HistoryScreen() {
           ...scan,
           matched,
           stamp: new Date(scan.createdAt).toLocaleString(),
-          subtitle: matched.length ? `⚠ ${matched.join(', ')}` : '✓ No matches',
+          subtitle: matched.length ? t.matched(allergenLabels(matched, language)) : t.noMatches,
         };
       }),
-    [scans, allergens]
+    [scans, allergens, language, t]
   );
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 24 }]}>
-      <Text style={styles.title}>Scan history</Text>
+      <Text style={styles.title}>{t.scanHistory}</Text>
       {empty ? (
-        <Text style={styles.empty}>No scans yet. Capture a label to see it here.</Text>
+        <Text style={styles.empty}>{t.emptyHistory}</Text>
       ) : (
         <FlatList
           data={data}

@@ -2,6 +2,9 @@ import TextRecognition, { TextRecognitionScript } from '@react-native-ml-kit/tex
 
 import { extractIngredientSection } from './label-text';
 
+/** Thrown when OCR read nothing; the screen turns it into localized copy. */
+export const NO_TEXT_FOUND = 'NO_TEXT_FOUND';
+
 export type OcrResult = {
   text: string;
 };
@@ -41,7 +44,7 @@ export async function detectIngredientsAsync(imageUri: string): Promise<OcrResul
     .filter(Boolean);
 
   if (lines.length === 0) {
-    throw new Error('No text found. Move closer to the label and try again.');
+    throw new Error(NO_TEXT_FOUND);
   }
 
   return {
