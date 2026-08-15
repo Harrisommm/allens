@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
@@ -61,3 +62,16 @@ export const useAllergies = create<AllergyState>()(
     }
   )
 );
+
+/**
+ * The matchable allergen list, for screens.
+ *
+ * `activeAllergens()` builds a fresh array every call, so using it directly as
+ * a zustand selector re-renders forever. Subscribe to the raw state and derive
+ * from it — here, once, instead of in every screen that needs the list.
+ */
+export function useActiveAllergens(): Allergen[] {
+  const selected = useAllergies((state) => state.selected);
+  const custom = useAllergies((state) => state.custom);
+  return useMemo(() => useAllergies.getState().activeAllergens(), [selected, custom]);
+}

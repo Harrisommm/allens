@@ -83,6 +83,23 @@ export function matchedAllergenNames(matches: AllergenMatch[]): string[] {
 }
 
 /**
+ * The verdict for one scan: both readings of the label are searched, because a
+ * translation can drop a term the original names, and vice versa.
+ *
+ * Lives here rather than in the screens that show the badge so the self-check
+ * exercises the real safety path instead of a re-typed copy of it.
+ */
+export function scanAllergenNames(
+  scan: { originalText: string; translatedText: string },
+  allergens: Allergen[]
+): string[] {
+  return matchedAllergenNames([
+    ...findAllergenMatches(scan.translatedText, allergens),
+    ...findAllergenMatches(scan.originalText, allergens),
+  ]);
+}
+
+/**
  * Splits text into runs for rendering, merging overlapping matches so
  * "soy lecithin" and "soy" don't paint the same characters twice.
  */

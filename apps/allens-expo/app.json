@@ -52,7 +52,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "allens uses the camera to read ingredient labels. Photos stay on your device."
+          "cameraPermission": "allens uses the camera to read ingredient labels. Photos stay on your device; the label text is sent to Google Translate."
         }
       ],
       [

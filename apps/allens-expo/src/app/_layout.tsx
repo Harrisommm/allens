@@ -1,9 +1,29 @@
 import { useEffect } from 'react';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import {
+  ErrorBoundary as RouterErrorBoundary,
+  Stack,
+  useRouter,
+  useSegments,
+  type ErrorBoundaryProps,
+} from 'expo-router';
 import { getAuth, onAuthStateChanged } from '@react-native-firebase/auth';
+import { getCrashlytics, recordError } from '@react-native-firebase/crashlytics';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/store/auth';
+
+/**
+ * Expo Router catches render errors itself, so they never reach the global
+ * handler Crashlytics chains onto — without this, a white-screen crash is
+ * invisible in the console. Same screen as before, just reported first.
+ */
+export function ErrorBoundary(props: ErrorBoundaryProps) {
+  useEffect(() => {
+    recordError(getCrashlytics(), props.error);
+  }, [props.error]);
+
+  return <RouterErrorBoundary {...props} />;
+}
 
 export default function RootLayout() {
   const router = useRouter();
