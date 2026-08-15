@@ -11,6 +11,7 @@ import {
   findAllergenMatches,
   matchedAllergenNames,
   scanAllergenNames,
+  searchAllergens,
   splitByMatches,
   type Allergen,
 } from './allergy-matcher.ts';
@@ -183,6 +184,24 @@ for (const clean of [
 ]) {
   assert.deepEqual(flags(clean), [], `clean label flagged: ${clean}`);
 }
+
+// --- setup-screen search ----------------------------------------------------
+//
+// Searching only the display names would make a nine-language table unusable:
+// nobody types "Shellfish" when the word they know is 새우.
+
+const found = (query: string) => searchAllergens(query).map((allergen) => allergen.name);
+
+assert.deepEqual(found('새우'), ['Shellfish']);
+assert.deepEqual(found('Sellerie'), ['Celery']);
+assert.deepEqual(found('うし'), []); // not an alias; 牛肉 is
+assert.deepEqual(found('牛肉'), ['Beef']);
+assert.deepEqual(found('MILK'), ['Milk']); // case-insensitive
+assert.deepEqual(found('  gluten  '), ['Wheat']); // trimmed
+assert.deepEqual(found('đậu phộng'), ['Peanut']);
+assert.deepEqual(found('zzzz'), []);
+assert.equal(searchAllergens('').length, PRESET_ALLERGENS.length); // blank shows all
+assert.equal(searchAllergens('   ').length, PRESET_ALLERGENS.length);
 
 // --- structural: no Latin-script alias shorter than three characters --------
 //

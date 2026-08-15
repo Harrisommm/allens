@@ -391,6 +391,26 @@ export const PRESET_ALLERGENS: Allergen[] = [
   },
 ];
 
+/**
+ * Presets whose name *or* any spelling contains `query`, for the setup screen's
+ * search box. Blank query means everything.
+ *
+ * Searching the aliases is the point: someone who reacts to 새우 types 새우, not
+ * "Shellfish", and someone holding a German jar types "Sellerie" to find Celery.
+ * With 25 presets spelled across nine languages, the display names alone are not
+ * a findable index.
+ */
+export function searchAllergens(query: string, allergens = PRESET_ALLERGENS): Allergen[] {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return allergens;
+
+  return allergens.filter(
+    ({ name, aliases }) =>
+      name.toLowerCase().includes(needle) ||
+      aliases.some((alias) => alias.toLowerCase().includes(needle))
+  );
+}
+
 export type AllergenMatch = {
   allergen: string;
   /** The alias as it appears in the text. */

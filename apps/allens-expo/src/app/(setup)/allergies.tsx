@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { SectionHeading } from '@/components/SectionHeading';
 import { signOutEverywhere } from '@/components/firebase-auth/google-auth';
-import { PRESET_ALLERGENS } from '@/services/allergy-matcher';
+import { searchAllergens } from '@/services/allergy-matcher';
 import { useAllergies } from '@/store/allergies';
 import { useAuth } from '@/store/auth';
 
@@ -14,6 +14,7 @@ export default function AllergySetupScreen() {
   const { selected, custom, toggle, addCustom, removeCustom } = useAllergies();
   const email = useAuth((state) => state.user?.email);
   const [draft, setDraft] = useState('');
+  const [query, setQuery] = useState('');
   // The stack hides its header, so every screen has to clear the status bar
   // and Dynamic Island itself.
   const insets = useSafeAreaInsets();
@@ -22,6 +23,16 @@ export default function AllergySetupScreen() {
     addCustom(draft);
     setDraft('');
   };
+
+  const search = query.trim().toLowerCase();
+
+  // Matches aliases too, so 새우 finds Shellfish — see searchAllergens.
+  const presets = useMemo(() => searchAllergens(search), [search]);
+
+  const customMatches = useMemo(
+    () => (search ? custom.filter((name) => name.toLowerCase().includes(search)) : custom),
+    [search, custom]
+  );
 
   const renderPill = (name: string, onLongPress?: () => void) => (
     <Pressable
@@ -45,7 +56,28 @@ export default function AllergySetupScreen() {
         subtitle="Pick everything you react to. Every scan is matched against this list."
       />
 
-      <View style={styles.grid}>{PRESET_ALLERGENS.map(({ name }) => renderPill(name))}</View>
+      <TextInput
+        value={query}
+        onChangeText={setQuery}
+        placeholder="Search allergens — milk, 우유, Sellerie…"
+        placeholderTextColor="#94a3b8"
+        style={styles.search}
+        returnKeyType="search"
+        autoCorrect={false}
+        autoCapitalize="none"
+        clearButtonMode="while-editing"
+        accessibilityLabel="Search allergens"
+      />
+
+      {/* The Save button always shows the total, so a filtered view can never
+          hide how many allergies are actually selected. */}
+      <View style={styles.grid}>{presets.map(({ name }) => renderPill(name))}</View>
+
+      {search && presets.length === 0 ? (
+        <Text style={styles.hint}>
+          No preset matches “{query.trim()}”. Add it as a custom allergen below.
+        </Text>
+      ) : null}
 
       <View style={styles.customSection}>
         <SectionHeading title="Custom" subtitle="Anything else, in the language on your labels." />
@@ -65,9 +97,9 @@ export default function AllergySetupScreen() {
         </View>
 
         <View style={styles.grid}>
-          {custom.map((name) => renderPill(name, () => removeCustom(name)))}
+          {customMatches.map((name) => renderPill(name, () => removeCustom(name)))}
         </View>
-        {custom.length > 0 ? (
+        {customMatches.length > 0 ? (
           <Text style={styles.hint}>Long-press a custom tag to delete it.</Text>
         ) : null}
       </View>
@@ -128,6 +160,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     color: '#0f172a',
+  },
+  search: {
+    borderWidth: 1,
+    borderColor: '#cbd5f5',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    color: '#0f172a',
+    backgroundColor: '#f8fafc',
   },
   addButton: {
     justifyContent: 'center',
