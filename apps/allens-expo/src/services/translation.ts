@@ -1,5 +1,7 @@
 import { getLocales } from 'expo-localization';
 
+import { uiLanguageFrom, type UiLanguage } from './strings';
+
 /**
  * Google Cloud Translation (v2 REST) — plain fetch, no SDK needed.
  *
@@ -10,8 +12,7 @@ import { getLocales } from 'expo-localization';
  */
 const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY;
 
-export async function translateTextAsync(text: string, targetLocale: string): Promise<string> {
-  const target = targetLocale.split('-')[0];
+export async function translateTextAsync(text: string, target: string): Promise<string> {
   if (!API_KEY || !text.trim()) return text;
 
   try {
@@ -34,7 +35,8 @@ export async function translateTextAsync(text: string, targetLocale: string): Pr
 }
 
 /**
- * The language to translate into ("ko", "en", "ja", …).
+ * The language to translate into ("ko", "en", "ja", "zh-TW", …), as a code the
+ * Translation API takes directly.
  *
  * This is the app's own language as chosen in the OS per-app language settings,
  * which starts out as the device language and is user-changeable — `app.json`
@@ -43,5 +45,22 @@ export async function translateTextAsync(text: string, targetLocale: string): Pr
  * than caching it.
  */
 export function deviceLanguage(): string {
-  return getLocales()[0]?.languageCode ?? 'en';
+  const locale = getLocales()[0];
+  const language = locale?.languageCode ?? 'en';
+
+  // Chinese is the one case where the language code isn't enough: bare "zh"
+  // comes back Simplified, which a Traditional reader can't comfortably read.
+  if (language === 'zh') return locale?.languageScriptCode === 'Hant' ? 'zh-TW' : 'zh-CN';
+
+  return language;
+}
+
+/**
+ * The language the app's own copy is written in — a much shorter list than the
+ * languages it can *translate into*. A Spanish speaker gets Spanish scan
+ * results and an English interface, which is the honest trade: bad UI copy in a
+ * safety app is worse than English copy.
+ */
+export function uiLanguage(): UiLanguage {
+  return uiLanguageFrom(getLocales()[0]?.languageCode);
 }

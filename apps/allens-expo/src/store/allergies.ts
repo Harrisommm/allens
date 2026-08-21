@@ -6,6 +6,15 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { PRESET_ALLERGENS, type Allergen } from '@/services/allergy-matcher';
 
 type AllergyState = {
+  /**
+   * False until AsyncStorage has been read back.
+   *
+   * Screens must not judge an empty profile before this flips: on a cold start
+   * `selected` is `[]` for the first frames, which is indistinguishable from
+   * "no allergies chosen" — and in a safety app those render very differently.
+   * `auth.isReady` plays the same role for the Firebase session.
+   */
+  hydrated: boolean;
   /** Names of selected allergens — preset or custom. */
   selected: string[];
   /** User-typed allergens; alias list is just the name itself. */
@@ -20,6 +29,7 @@ type AllergyState = {
 export const useAllergies = create<AllergyState>()(
   persist(
     (set, get) => ({
+      hydrated: false,
       selected: [],
       custom: [],
 
@@ -59,6 +69,9 @@ export const useAllergies = create<AllergyState>()(
       name: 'allens-allergies',
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({ selected: state.selected, custom: state.custom }),
+      // Runs on success *and* on a read error — a broken store is still "done
+      // loading", and leaving the flag false would hang every screen forever.
+      onRehydrateStorage: () => () => useAllergies.setState({ hydrated: true }),
     }
   )
 );

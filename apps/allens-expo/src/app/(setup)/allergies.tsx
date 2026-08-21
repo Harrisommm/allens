@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6,7 +6,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { SectionHeading } from '@/components/SectionHeading';
 import { signOutEverywhere } from '@/components/firebase-auth/google-auth';
-import { PRESET_ALLERGENS } from '@/services/allergy-matcher';
+import { searchAllergens } from '@/services/allergy-matcher';
+import { allergenLabel, strings } from '@/services/strings';
+import { uiLanguage } from '@/services/translation';
 import { useAllergies } from '@/store/allergies';
 import { useAuth } from '@/store/auth';
 
@@ -14,14 +16,27 @@ export default function AllergySetupScreen() {
   const { selected, custom, toggle, addCustom, removeCustom } = useAllergies();
   const email = useAuth((state) => state.user?.email);
   const [draft, setDraft] = useState('');
+  const [query, setQuery] = useState('');
   // The stack hides its header, so every screen has to clear the status bar
   // and Dynamic Island itself.
   const insets = useSafeAreaInsets();
+  const language = uiLanguage();
+  const t = strings(language);
 
   const submitCustom = () => {
     addCustom(draft);
     setDraft('');
   };
+
+  const search = query.trim().toLowerCase();
+
+  // Matches aliases too, so 새우 finds Shellfish — see searchAllergens.
+  const presets = useMemo(() => searchAllergens(search), [search]);
+
+  const customMatches = useMemo(
+    () => (search ? custom.filter((name) => name.toLowerCase().includes(search)) : custom),
+    [search, custom]
+  );
 
   const renderPill = (name: string, onLongPress?: () => void) => (
     <Pressable
@@ -32,8 +47,9 @@ export default function AllergySetupScreen() {
       onLongPress={onLongPress}
       style={[styles.pill, selected.includes(name) && styles.pillSelected]}
     >
+      {/* The English name is the stored identity; only the label is translated. */}
       <Text style={[styles.pillText, selected.includes(name) && styles.pillTextSelected]}>
-        {name}
+        {allergenLabel(name, language)}
       </Text>
     </Pressable>
   );
@@ -41,45 +57,67 @@ export default function AllergySetupScreen() {
   return (
     <ScrollView contentContainerStyle={[styles.container, { paddingTop: insets.top + 24 }]}>
       <SectionHeading
-        title="Allergy profile"
-        subtitle="Pick everything you react to. Every scan is matched against this list."
+        title={t.allergyProfile}
+        subtitle={t.allergyProfileSubtitle}
       />
 
-      <View style={styles.grid}>{PRESET_ALLERGENS.map(({ name }) => renderPill(name))}</View>
+      <TextInput
+        value={query}
+        onChangeText={setQuery}
+        placeholder={t.searchPlaceholder}
+        placeholderTextColor="#94a3b8"
+        style={styles.search}
+        returnKeyType="search"
+        autoCorrect={false}
+        autoCapitalize="none"
+        clearButtonMode="while-editing"
+        accessibilityLabel={t.searchLabel}
+      />
+
+      {/* The Save button always shows the total, so a filtered view can never
+          hide how many allergies are actually selected. */}
+      <View style={styles.grid}>{presets.map(({ name }) => renderPill(name))}</View>
+
+      {search && presets.length === 0 ? (
+        <Text style={styles.hint}>{t.noPresetMatch(query.trim())}</Text>
+      ) : null}
 
       <View style={styles.customSection}>
-        <SectionHeading title="Custom" subtitle="Anything else, in the language on your labels." />
+        <SectionHeading title={t.custom} subtitle={t.customSubtitle} />
         <View style={styles.inputRow}>
           <TextInput
             value={draft}
             onChangeText={setDraft}
             onSubmitEditing={submitCustom}
-            placeholder="e.g. 메밀, mustard"
+            placeholder={t.customPlaceholder}
             placeholderTextColor="#94a3b8"
             style={styles.input}
             returnKeyType="done"
           />
           <Pressable onPress={submitCustom} style={styles.addButton} accessibilityRole="button">
-            <Text style={styles.addButtonText}>Add</Text>
+            <Text style={styles.addButtonText}>{t.add}</Text>
           </Pressable>
         </View>
 
         <View style={styles.grid}>
-          {custom.map((name) => renderPill(name, () => removeCustom(name)))}
+          {customMatches.map((name) => renderPill(name, () => removeCustom(name)))}
         </View>
-        {custom.length > 0 ? (
-          <Text style={styles.hint}>Long-press a custom tag to delete it.</Text>
+        {customMatches.length > 0 ? (
+          <Text style={styles.hint}>{t.longPressHint}</Text>
         ) : null}
       </View>
 
       <PrimaryButton
-        label={selected.length === 0 ? 'Select at least one' : `Save ${selected.length} & scan`}
+        label={selected.length === 0 ? t.selectAtLeastOne : t.saveAndScan(selected.length)}
         disabled={selected.length === 0}
         onPress={() => router.replace('/camera')}
       />
 
       <Pressable onPress={signOutEverywhere} style={styles.signOut} accessibilityRole="button">
-        <Text style={styles.signOutText}>Sign out{email ? ` · ${email}` : ''}</Text>
+        <Text style={styles.signOutText}>
+          {t.signOut}
+          {email ? ` · ${email}` : ''}
+        </Text>
       </Pressable>
     </ScrollView>
   );
@@ -128,6 +166,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     color: '#0f172a',
+  },
+  search: {
+    borderWidth: 1,
+    borderColor: '#cbd5f5',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    color: '#0f172a',
+    backgroundColor: '#f8fafc',
   },
   addButton: {
     justifyContent: 'center',

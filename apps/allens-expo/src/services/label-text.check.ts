@@ -67,11 +67,110 @@ assert.deepEqual(
   ['原材料名: 水、砂糖', '本品には乳成分・大豆を含みます']
 );
 
+// Chinese labels — 配料 opens the block, 净含量 and 保质期 close it
+const chinese = [
+  '巧克力饼干',
+  '上海幸福食品有限公司',
+  '配料: 小麦粉、白砂糖、全脂奶粉、大豆油',
+  '净含量 100克',
+  '保质期 12个月',
+  '地址: 上海市浦东新区某某路123号',
+];
+const chineseTrimmed = extractIngredientSection(chinese);
+assert.deepEqual(chineseTrimmed, ['配料: 小麦粉、白砂糖、全脂奶粉、大豆油']);
+assert.ok(!chineseTrimmed.join(' ').includes('浦东'), 'address must be dropped');
+
+// the Chinese advisory survives even though it sits past the section end
+assert.deepEqual(
+  extractIngredientSection(['配料表: 水、白砂糖', '淨含量 250毫升', '過敏原信息: 含有大豆、雞蛋']),
+  ['配料表: 水、白砂糖', '過敏原信息: 含有大豆、雞蛋']
+);
+
+// Latin-script labels — Spanish and Italian ride on the English "ingredient",
+// French needs its own accented form, German and Vietnamese their own words
+const spanish = [
+  'Galletas de chocolate',
+  'Ingredientes: harina de trigo, azúcar, leche desnatada, aceite de soja',
+  'Peso neto 100 g',
+  'Información nutricional por 100 g',
+  'Fabricado por Alimentos Felices, Calle Mayor 12, Madrid',
+];
+const spanishTrimmed = extractIngredientSection(spanish);
+assert.deepEqual(spanishTrimmed, [
+  'Ingredientes: harina de trigo, azúcar, leche desnatada, aceite de soja',
+]);
+assert.ok(!spanishTrimmed.join(' ').includes('Madrid'), 'address must be dropped');
+
+assert.deepEqual(
+  extractIngredientSection([
+    'Biscotti',
+    'Ingredienti: farina di grano, zucchero, latte',
+    'Peso netto 100 g',
+    'Da consumarsi preferibilmente entro il 05/2026',
+  ]),
+  ['Ingredienti: farina di grano, zucchero, latte']
+);
+
+// "Ingrédients" would be missed by the English term — the accent breaks it
+const french = [
+  'Biscuits au chocolat',
+  'Ingrédients: farine de blé, sucre, lait, oeuf',
+  'Poids net 100 g',
+  'À consommer de préférence avant le 05/2026',
+  'Fabriqué par Aliments Heureux, 12 rue Principale, Paris',
+];
+const frenchTrimmed = extractIngredientSection(french);
+assert.deepEqual(frenchTrimmed, ['Ingrédients: farine de blé, sucre, lait, oeuf']);
+assert.ok(!frenchTrimmed.join(' ').includes('Paris'), 'address must be dropped');
+
+assert.deepEqual(
+  extractIngredientSection([
+    'Schokoladenkekse',
+    'Zutaten: Weizenmehl, Zucker, Milch, Hühnerei',
+    'Nettofüllmenge 100 g',
+    'Mindestens haltbar bis 05/2026',
+    'Kann Spuren von Erdnüssen enthalten',
+  ]),
+  ['Zutaten: Weizenmehl, Zucker, Milch, Hühnerei', 'Kann Spuren von Erdnüssen enthalten']
+);
+
+assert.deepEqual(
+  extractIngredientSection([
+    'Bánh quy sô cô la',
+    'Thành phần: bột mì, đường, sữa, trứng',
+    'Khối lượng tịnh 100 g',
+    'Hạn sử dụng 05/2026',
+    'Sản phẩm có thể chứa đậu phộng',
+  ]),
+  ['Thành phần: bột mì, đường, sữa, trứng', 'Sản phẩm có thể chứa đậu phộng']
+);
+
 // multi-line ingredient blocks stay whole
 assert.deepEqual(
   extractIngredientSection(['원재료명', '밀가루, 설탕,', '전지분유(우유)', '유통기한 별도표기']),
   ['원재료명', '밀가루, 설탕,', '전지분유(우유)']
 );
+
+// Two advisories, one before the ingredient block and one on the very line that
+// ends it. Rescuing the first must not shift the "already kept" window past the
+// second — dropping a line that names an allergen is the one unrecoverable bug.
+const twoAdvisories = extractIngredientSection([
+  '본 제품은 대두를 함유한 제품과 같은 시설에서 제조',
+  '맛있는 초코쿠키',
+  '주식회사 행복식품',
+  '원재료명: 밀가루, 설탕, 전지분유',
+  '내용량 100g, 알레르기 유발물질: 우유 함유',
+  '영양성분 열량 500kcal',
+]);
+assert.ok(
+  twoAdvisories.some((line) => line.includes('우유')),
+  'an advisory on the block-terminating line must survive an earlier advisory'
+);
+assert.ok(
+  twoAdvisories.some((line) => line.includes('대두')),
+  'the advisory before the block must survive too'
+);
+assert.ok(!twoAdvisories.join(' ').includes('영양성분'), 'nutrition must still be dropped');
 
 // fail open: no recognisable header means keep everything
 const unrecognised = ['설탕', '우유', '대두'];

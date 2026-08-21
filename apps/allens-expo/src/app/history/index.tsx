@@ -4,7 +4,9 @@ import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { scanAllergenNames } from '@/services/allergy-matcher';
-import { useActiveAllergens } from '@/store/allergies';
+import { allergenLabels, strings } from '@/services/strings';
+import { uiLanguage } from '@/services/translation';
+import { useActiveAllergens, useAllergies } from '@/store/allergies';
 import { useScanHistory } from '@/store/scan-history';
 
 export default function HistoryScreen() {
@@ -14,28 +16,38 @@ export default function HistoryScreen() {
   // and Dynamic Island itself.
   const insets = useSafeAreaInsets();
   const allergens = useActiveAllergens();
+  // An empty profile matches nothing, which is not the same as finding nothing —
+  // a green "No matches" there is a verdict the app never earned. Until the store
+  // rehydrates, every profile looks empty, so wait for that too.
+  const judged = useAllergies((state) => state.hydrated) && allergens.length > 0;
+  const language = uiLanguage();
+  const t = strings(language);
 
   // Re-judged against the *current* profile rather than a snapshot taken at scan
   // time, so turning Milk on re-flags every old scan in this list too.
   const data = useMemo(
     () =>
       scans.map((scan) => {
-        const matched = scanAllergenNames(scan, allergens);
+        const matched = judged ? scanAllergenNames(scan, allergens) : [];
         return {
           ...scan,
           matched,
           stamp: new Date(scan.createdAt).toLocaleString(),
-          subtitle: matched.length ? `⚠ ${matched.join(', ')}` : '✓ No matches',
+          subtitle: !judged
+            ? t.notChecked
+            : matched.length
+              ? t.matched(allergenLabels(matched, language))
+              : t.noMatches,
         };
       }),
-    [scans, allergens]
+    [scans, allergens, judged, language, t]
   );
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 24 }]}>
-      <Text style={styles.title}>Scan history</Text>
+      <Text style={styles.title}>{t.scanHistory}</Text>
       {empty ? (
-        <Text style={styles.empty}>No scans yet. Capture a label to see it here.</Text>
+        <Text style={styles.empty}>{t.emptyHistory}</Text>
       ) : (
         <FlatList
           data={data}
@@ -54,6 +66,7 @@ export default function HistoryScreen() {
                   style={[
                     styles.cardMeta,
                     item.matched.length === 0 && styles.cardMetaSafe,
+                    !judged && styles.cardMetaNeutral,
                   ]}
                 >
                   {item.subtitle}
@@ -114,6 +127,9 @@ const styles = StyleSheet.create({
   },
   cardMetaSafe: {
     color: '#166534',
+  },
+  cardMetaNeutral: {
+    color: '#64748b',
   },
   cardPreview: {
     color: '#475569',
