@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { findAllergenMatches, scanAllergenNames, splitByMatches } from '@/services/allergy-matcher';
 import { allergenLabels, strings } from '@/services/strings';
 import { uiLanguage } from '@/services/translation';
-import { useActiveAllergens } from '@/store/allergies';
+import { useActiveAllergens, useAllergies } from '@/store/allergies';
 import { useScanHistory } from '@/store/scan-history';
 
 export default function HistoryDetailScreen() {
@@ -20,6 +20,7 @@ export default function HistoryDetailScreen() {
   // *current* profile, so editing your allergies re-judges old scans and the
   // two can never contradict each other.
   const allergens = useActiveAllergens();
+  const hydrated = useAllergies((state) => state.hydrated);
   const language = uiLanguage();
   const t = strings(language);
 
@@ -38,6 +39,10 @@ export default function HistoryDetailScreen() {
   // badge still claimed "Safe".
   const matched = scanAllergenNames(scan, allergens);
   const isRisky = matched.length > 0;
+  // An empty profile matches nothing, which is not the same as finding nothing.
+  // Saying "Safe" there would be a verdict the app never earned — and until the
+  // store rehydrates, every profile looks empty.
+  const judged = hydrated && allergens.length > 0;
 
   const renderHighlighted = (text: string) => (
     <Text style={styles.body}>
@@ -51,11 +56,26 @@ export default function HistoryDetailScreen() {
 
   return (
     <ScrollView contentContainerStyle={[styles.container, { paddingTop: insets.top + 24 }]}>
-      <View style={[styles.badge, isRisky ? styles.badgeDanger : styles.badgeSafe]}>
-        <Text style={[styles.badgeText, isRisky ? styles.badgeTextDanger : styles.badgeTextSafe]}>
-          {isRisky ? t.danger(allergenLabels(matched, language)) : t.safe}
+      <View
+        style={[
+          styles.badge,
+          !judged ? styles.badgeNeutral : isRisky ? styles.badgeDanger : styles.badgeSafe,
+        ]}
+      >
+        <Text
+          style={[
+            styles.badgeText,
+            !judged
+              ? styles.badgeTextNeutral
+              : isRisky
+                ? styles.badgeTextDanger
+                : styles.badgeTextSafe,
+          ]}
+        >
+          {!judged ? t.notChecked : isRisky ? t.danger(allergenLabels(matched, language)) : t.safe}
         </Text>
       </View>
+      {!judged && hydrated ? <Text style={styles.meta}>{t.notCheckedBody}</Text> : null}
 
       {/* Uncontrolled on purpose: the store is only touched when editing ends,
           so typing doesn't re-render the highlighted text below on every key. */}
@@ -133,6 +153,9 @@ const styles = StyleSheet.create({
   badgeDanger: {
     backgroundColor: '#fee2e2',
   },
+  badgeNeutral: {
+    backgroundColor: '#e2e8f0',
+  },
   badgeText: {
     fontWeight: '700',
   },
@@ -141,6 +164,9 @@ const styles = StyleSheet.create({
   },
   badgeTextDanger: {
     color: '#b91c1c',
+  },
+  badgeTextNeutral: {
+    color: '#475569',
   },
   title: {
     fontSize: 24,

@@ -11,6 +11,9 @@ import { deviceLanguage, translateTextAsync, uiLanguage } from '@/services/trans
 import { useAllergies } from '@/store/allergies';
 import { useScanHistory } from '@/store/scan-history';
 
+/** Sentinel, not copy — turned into the user's language in the catch below. */
+const PHOTO_FAILED = 'PHOTO_FAILED';
+
 export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -25,6 +28,10 @@ export default function CameraScreen() {
   const addScan = useScanHistory((state) => state.addScan);
   const t = strings(uiLanguage());
   const selectedCount = useAllergies((state) => state.selected.length);
+  // AsyncStorage rehydrates asynchronously, so a returning user's profile reads
+  // empty for the first frames. Deciding anything on that flashes the setup card
+  // at someone who already finished setup.
+  const hydrated = useAllergies((state) => state.hydrated);
 
   const handleCapture = async () => {
     if (!cameraRef.current || isProcessing) return;
@@ -33,7 +40,7 @@ export default function CameraScreen() {
       setIsProcessing(true);
       setStatus(t.capturing);
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.7 });
-      if (!photo?.uri) throw new Error(t.photoFailed);
+      if (!photo?.uri) throw new Error(PHOTO_FAILED);
 
       setStatus(t.reading);
       const ocr = await detectIngredientsAsync(photo.uri);
@@ -63,15 +70,20 @@ export default function CameraScreen() {
       setStatus(null);
       router.push(`/history/${id}`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : '';
-      setStatus(message === NO_TEXT_FOUND ? t.noTextFound : message || t.scanFailed);
+      // Only our own sentinels become copy. A native ML Kit error message is
+      // English no matter who is holding the phone, so it never reaches the user.
+      const code = error instanceof Error ? error.message : '';
+      setStatus(
+        code === NO_TEXT_FOUND ? t.noTextFound : code === PHOTO_FAILED ? t.photoFailed : t.scanFailed
+      );
       statusTimer.current = setTimeout(() => setStatus(null), 4000);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  if (!permission) {
+  // Permission status and the stored profile both arrive a frame or two late.
+  if (!permission || !hydrated) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator />

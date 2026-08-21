@@ -151,6 +151,27 @@ assert.deepEqual(
   ['원재료명', '밀가루, 설탕,', '전지분유(우유)']
 );
 
+// Two advisories, one before the ingredient block and one on the very line that
+// ends it. Rescuing the first must not shift the "already kept" window past the
+// second — dropping a line that names an allergen is the one unrecoverable bug.
+const twoAdvisories = extractIngredientSection([
+  '본 제품은 대두를 함유한 제품과 같은 시설에서 제조',
+  '맛있는 초코쿠키',
+  '주식회사 행복식품',
+  '원재료명: 밀가루, 설탕, 전지분유',
+  '내용량 100g, 알레르기 유발물질: 우유 함유',
+  '영양성분 열량 500kcal',
+]);
+assert.ok(
+  twoAdvisories.some((line) => line.includes('우유')),
+  'an advisory on the block-terminating line must survive an earlier advisory'
+);
+assert.ok(
+  twoAdvisories.some((line) => line.includes('대두')),
+  'the advisory before the block must survive too'
+);
+assert.ok(!twoAdvisories.join(' ').includes('영양성분'), 'nutrition must still be dropped');
+
 // fail open: no recognisable header means keep everything
 const unrecognised = ['설탕', '우유', '대두'];
 assert.deepEqual(extractIngredientSection(unrecognised), unrecognised);

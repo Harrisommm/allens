@@ -49,8 +49,11 @@ export function extractIngredientSection(lines: string[]): string[] {
   }
 
   // Advisories can appear anywhere on the package, including after the cut.
+  // Fix the block's end *before* rescuing any: each push grows `kept`, so reading
+  // its length inside the loop would walk the boundary forward and skip a line.
+  const blockEnd = start + kept.length;
   for (let i = 0; i < lines.length; i += 1) {
-    if ((i < start || i >= start + kept.length) && ALLERGEN_NOTE.test(lines[i])) {
+    if ((i < start || i >= blockEnd) && ALLERGEN_NOTE.test(lines[i])) {
       kept.push(lines[i]);
     }
   }

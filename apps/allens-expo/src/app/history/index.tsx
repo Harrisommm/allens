@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scanAllergenNames } from '@/services/allergy-matcher';
 import { allergenLabels, strings } from '@/services/strings';
 import { uiLanguage } from '@/services/translation';
-import { useActiveAllergens } from '@/store/allergies';
+import { useActiveAllergens, useAllergies } from '@/store/allergies';
 import { useScanHistory } from '@/store/scan-history';
 
 export default function HistoryScreen() {
@@ -16,6 +16,10 @@ export default function HistoryScreen() {
   // and Dynamic Island itself.
   const insets = useSafeAreaInsets();
   const allergens = useActiveAllergens();
+  // An empty profile matches nothing, which is not the same as finding nothing —
+  // a green "No matches" there is a verdict the app never earned. Until the store
+  // rehydrates, every profile looks empty, so wait for that too.
+  const judged = useAllergies((state) => state.hydrated) && allergens.length > 0;
   const language = uiLanguage();
   const t = strings(language);
 
@@ -24,15 +28,19 @@ export default function HistoryScreen() {
   const data = useMemo(
     () =>
       scans.map((scan) => {
-        const matched = scanAllergenNames(scan, allergens);
+        const matched = judged ? scanAllergenNames(scan, allergens) : [];
         return {
           ...scan,
           matched,
           stamp: new Date(scan.createdAt).toLocaleString(),
-          subtitle: matched.length ? t.matched(allergenLabels(matched, language)) : t.noMatches,
+          subtitle: !judged
+            ? t.notChecked
+            : matched.length
+              ? t.matched(allergenLabels(matched, language))
+              : t.noMatches,
         };
       }),
-    [scans, allergens, language, t]
+    [scans, allergens, judged, language, t]
   );
 
   return (
@@ -58,6 +66,7 @@ export default function HistoryScreen() {
                   style={[
                     styles.cardMeta,
                     item.matched.length === 0 && styles.cardMetaSafe,
+                    !judged && styles.cardMetaNeutral,
                   ]}
                 >
                   {item.subtitle}
@@ -118,6 +127,9 @@ const styles = StyleSheet.create({
   },
   cardMetaSafe: {
     color: '#166534',
+  },
+  cardMetaNeutral: {
+    color: '#64748b',
   },
   cardPreview: {
     color: '#475569',
