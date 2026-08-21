@@ -104,4 +104,3 @@ if __name__ == "__main__":
     # adaptive foreground: art shrunk into Android's safe zone, bg comes from app.json
     write_png(f"{out}/adaptive-icon.png", 1024, render(1024, scale=0.62, tile="clear"))
     write_png(f"{out}/splash-icon.png", 512, render(512, scale=0.75, tile="round"))
-    write_png(f"{out}/favicon.png", 48, render(48))

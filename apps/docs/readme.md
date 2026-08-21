@@ -137,7 +137,7 @@ pnpm exec expo export --platform android --dev   # bundle smoke test, same as CI
 
 ### App Icon
 The icon is generated, not hand-drawn. `python3 assets/make-icons.py assets` redraws
-`icon.png`, `adaptive-icon.png`, `splash-icon.png`, `favicon.png` and the iOS `AppIcon`
+`icon.png`, `adaptive-icon.png`, `splash-icon.png` and the iOS `AppIcon`
 slot from one model — stdlib only, no ImageMagick or PIL needed. `ios/` is gitignored,
 so a fresh `expo prebuild` also regenerates the native slot from `assets/icon.png`.
 

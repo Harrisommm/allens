@@ -43,11 +43,11 @@ export default function CameraScreen() {
       if (!photo?.uri) throw new Error(PHOTO_FAILED);
 
       setStatus(t.reading);
-      const ocr = await detectIngredientsAsync(photo.uri);
+      const ingredients = await detectIngredientsAsync(photo.uri);
 
       setStatus(t.translating);
       const targetLanguage = deviceLanguage();
-      const translated = await translateTextAsync(ocr.text, targetLanguage);
+      const translated = await translateTextAsync(ingredients, targetLanguage);
 
       // Nothing about the match is stored. Both history screens recompute it
       // from the *current* allergy profile, so switching Milk on later re-flags
@@ -60,7 +60,7 @@ export default function CameraScreen() {
         // we usually photograph just the ingredients panel, where it isn't even
         // printed — so scans are listed by date until renamed from the detail
         // screen.
-        originalText: ocr.text,
+        originalText: ingredients,
         translatedText: translated,
         targetLanguage,
         imageUri: photo.uri,

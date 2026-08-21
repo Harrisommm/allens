@@ -34,7 +34,7 @@ export default function RootLayout() {
   useEffect(
     () =>
       onAuthStateChanged(getAuth(), (user) =>
-        setUser(user ? { uid: user.uid, email: user.email, displayName: user.displayName } : null)
+        setUser(user ? { uid: user.uid, email: user.email } : null)
       ),
     [setUser]
   );

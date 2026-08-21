@@ -23,7 +23,6 @@ type ScanHistoryState = {
   /** The only way a scan gets a title at all. */
   renameScan: (id: string, title: string) => void;
   removeScan: (id: string) => void;
-  clear: () => void;
   getScanById: (id: string) => ScanHistoryItem | undefined;
 };
 
@@ -40,7 +39,6 @@ export const useScanHistory = create<ScanHistoryState>()(
           scans: state.scans.map((scan) => (scan.id === id ? { ...scan, title } : scan)),
         })),
       removeScan: (id) => set((state) => ({ scans: state.scans.filter((scan) => scan.id !== id) })),
-      clear: () => set({ scans: [] }),
       getScanById: (id) => get().scans.find((scan) => scan.id === id),
     }),
     {

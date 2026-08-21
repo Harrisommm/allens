@@ -258,5 +258,3 @@ export function allergenLabel(name: string, language: UiLanguage): string {
 export function allergenLabels(names: string[], language: UiLanguage): string {
   return names.map((name) => allergenLabel(name, language)).join(', ');
 }
-
-export { ALLERGEN_NAMES };

@@ -400,11 +400,11 @@ export const PRESET_ALLERGENS: Allergen[] = [
  * With 25 presets spelled across nine languages, the display names alone are not
  * a findable index.
  */
-export function searchAllergens(query: string, allergens = PRESET_ALLERGENS): Allergen[] {
+export function searchAllergens(query: string): Allergen[] {
   const needle = query.trim().toLowerCase();
-  if (!needle) return allergens;
+  if (!needle) return PRESET_ALLERGENS;
 
-  return allergens.filter(
+  return PRESET_ALLERGENS.filter(
     ({ name, aliases }) =>
       name.toLowerCase().includes(needle) ||
       aliases.some((alias) => alias.toLowerCase().includes(needle))
