@@ -3,7 +3,7 @@ import { Link } from 'expo-router';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { scanAllergenNames } from '@/services/allergy-matcher';
+import { scanVerdict } from '@/services/allergy-matcher';
 import { allergenLabels, strings } from '@/services/strings';
 import { uiLanguage } from '@/services/translation';
 import { useActiveAllergens, useAllergies } from '@/store/allergies';
@@ -28,16 +28,23 @@ export default function HistoryScreen() {
   const data = useMemo(
     () =>
       scans.map((scan) => {
-        const matched = judged ? scanAllergenNames(scan, allergens) : [];
+        const { direct, advisory } = judged
+          ? scanVerdict(scan, allergens)
+          : { direct: [], advisory: [] };
+        // Same precedence as the detail screen: a real ingredient outranks any
+        // cross-contact warning, so the row and the badge can never disagree.
+        const tone = !judged ? 'neutral' : direct.length ? 'danger' : advisory.length ? 'warn' : 'safe';
         return {
           ...scan,
-          matched,
+          tone,
           stamp: new Date(scan.createdAt).toLocaleString(),
           subtitle: !judged
             ? t.notChecked
-            : matched.length
-              ? t.matched(allergenLabels(matched, language))
-              : t.noMatches,
+            : direct.length
+              ? t.matched(allergenLabels(direct, language))
+              : advisory.length
+                ? t.mayContain(allergenLabels(advisory, language))
+                : t.noMatches,
         };
       }),
     [scans, allergens, judged, language, t]
@@ -65,8 +72,9 @@ export default function HistoryScreen() {
                 <Text
                   style={[
                     styles.cardMeta,
-                    item.matched.length === 0 && styles.cardMetaSafe,
-                    !judged && styles.cardMetaNeutral,
+                    item.tone === 'warn' && styles.cardMetaWarn,
+                    item.tone === 'safe' && styles.cardMetaSafe,
+                    item.tone === 'neutral' && styles.cardMetaNeutral,
                   ]}
                 >
                   {item.subtitle}
@@ -127,6 +135,9 @@ const styles = StyleSheet.create({
   },
   cardMetaSafe: {
     color: '#166534',
+  },
+  cardMetaWarn: {
+    color: '#92400e',
   },
   cardMetaNeutral: {
     color: '#64748b',

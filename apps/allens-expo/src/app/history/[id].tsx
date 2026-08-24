@@ -2,7 +2,7 @@ import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { findAllergenMatches, scanAllergenNames, splitByMatches } from '@/services/allergy-matcher';
+import { findAllergenMatches, scanVerdict, splitByMatches } from '@/services/allergy-matcher';
 import { allergenLabels, strings } from '@/services/strings';
 import { uiLanguage } from '@/services/translation';
 import { useActiveAllergens, useAllergies } from '@/store/allergies';
@@ -37,8 +37,11 @@ export default function HistoryDetailScreen() {
   // Derived from the current profile, exactly like the highlighting below.
   // Reading a stored snapshot here is what let the text turn red while the
   // badge still claimed "Safe".
-  const matched = scanAllergenNames(scan, allergens);
-  const isRisky = matched.length > 0;
+  const { direct, advisory } = scanVerdict(scan, allergens);
+  const isRisky = direct.length > 0;
+  // Amber only when nothing is a real ingredient. A direct match outranks any
+  // advisory, so "may contain" can never soften a label that plainly says milk.
+  const isAdvisory = !isRisky && advisory.length > 0;
   // An empty profile matches nothing, which is not the same as finding nothing.
   // Saying "Safe" there would be a verdict the app never earned — and until the
   // store rehydrates, every profile looks empty.
@@ -59,7 +62,13 @@ export default function HistoryDetailScreen() {
       <View
         style={[
           styles.badge,
-          !judged ? styles.badgeNeutral : isRisky ? styles.badgeDanger : styles.badgeSafe,
+          !judged
+            ? styles.badgeNeutral
+            : isRisky
+              ? styles.badgeDanger
+              : isAdvisory
+                ? styles.badgeWarn
+                : styles.badgeSafe,
         ]}
       >
         <Text
@@ -69,13 +78,27 @@ export default function HistoryDetailScreen() {
               ? styles.badgeTextNeutral
               : isRisky
                 ? styles.badgeTextDanger
-                : styles.badgeTextSafe,
+                : isAdvisory
+                  ? styles.badgeTextWarn
+                  : styles.badgeTextSafe,
           ]}
         >
-          {!judged ? t.notChecked : isRisky ? t.danger(allergenLabels(matched, language)) : t.safe}
+          {!judged
+            ? t.notChecked
+            : isRisky
+              ? t.danger(allergenLabels(direct, language))
+              : isAdvisory
+                ? t.mayContain(allergenLabels(advisory, language))
+                : t.safe}
         </Text>
       </View>
       {!judged && hydrated ? <Text style={styles.meta}>{t.notCheckedBody}</Text> : null}
+      {judged && isAdvisory ? <Text style={styles.meta}>{t.mayContainBody}</Text> : null}
+      {/* A risky label can carry an advisory for a *different* allergen; the
+          badge is already spoken for, so that one gets its own line. */}
+      {judged && isRisky && advisory.length > 0 ? (
+        <Text style={styles.meta}>{t.alsoMayContain(allergenLabels(advisory, language))}</Text>
+      ) : null}
 
       {/* Uncontrolled on purpose: the store is only touched when editing ends,
           so typing doesn't re-render the highlighted text below on every key. */}
@@ -120,6 +143,15 @@ export default function HistoryDetailScreen() {
         </View>
       ) : null}
 
+      {/* Shown as its own block so the wording that earned the amber verdict is
+          readable, not buried in the ingredient text. */}
+      {scan.advisoryText ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{t.advisorySection}</Text>
+          {renderHighlighted(scan.translatedAdvisoryText || scan.advisoryText)}
+        </View>
+      ) : null}
+
       <Pressable
         accessibilityRole="button"
         onPress={() => {
@@ -153,6 +185,9 @@ const styles = StyleSheet.create({
   badgeDanger: {
     backgroundColor: '#fee2e2',
   },
+  badgeWarn: {
+    backgroundColor: '#fef3c7',
+  },
   badgeNeutral: {
     backgroundColor: '#e2e8f0',
   },
@@ -164,6 +199,9 @@ const styles = StyleSheet.create({
   },
   badgeTextDanger: {
     color: '#b91c1c',
+  },
+  badgeTextWarn: {
+    color: '#92400e',
   },
   badgeTextNeutral: {
     color: '#475569',

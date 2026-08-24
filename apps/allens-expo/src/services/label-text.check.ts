@@ -3,6 +3,10 @@
  * hide an allergen, so the "keeps things it shouldn't drop" cases matter more
  * than the tidy ones.
  *
+ * Since the split, there is a second way to be wrong: filing a line as a
+ * cross-contact advisory when it is a direct declaration would soften a real
+ * allergen into "may contain". Those cases are asserted hardest.
+ *
  *   node --experimental-strip-types src/services/label-text.check.ts
  */
 import assert from 'node:assert/strict';
@@ -20,22 +24,27 @@ const korean = [
   '영양성분 열량 500kcal',
 ];
 const trimmed = extractIngredientSection(korean);
-assert.deepEqual(trimmed, ['원재료명: 밀가루(밀:미국산), 설탕, 전지분유(우유), 대두유']);
-assert.ok(!trimmed.join(' ').includes('강남구'), 'address must be dropped');
-assert.ok(!trimmed.join(' ').includes('행복식품'), 'company name must be dropped');
+assert.deepEqual(trimmed.ingredients, ['원재료명: 밀가루(밀:미국산), 설탕, 전지분유(우유), 대두유']);
+assert.deepEqual(trimmed.advisories, []);
+assert.ok(!trimmed.ingredients.join(' ').includes('강남구'), 'address must be dropped');
+assert.ok(!trimmed.ingredients.join(' ').includes('행복식품'), 'company name must be dropped');
 
-// the allergen advisory survives even though it sits past the section end
+// The Korean 알레르기 유발물질 line is a *direct* declaration — the law requires
+// it because the allergen is in the product. It survives the trim, and it must
+// stay with the ingredients rather than being demoted to a cross-contact note.
 const withAdvisory = [
   '원재료명: 정제수, 설탕',
   '내용량 250ml',
   '알레르기 유발물질: 우유, 대두 함유',
 ];
-assert.deepEqual(extractIngredientSection(withAdvisory), [
+const advisoryResult = extractIngredientSection(withAdvisory);
+assert.deepEqual(advisoryResult.ingredients, [
   '원재료명: 정제수, 설탕',
   '알레르기 유발물질: 우유, 대두 함유',
 ]);
+assert.deepEqual(advisoryResult.advisories, [], '"함유" is contains, not may-contain');
 
-// English labels
+// English labels — "Contains:" is likewise a direct declaration
 const english = [
   'Choco Cookies',
   'Ingredients: Wheat Flour, Sugar, Milk Powder, Soy Lecithin',
@@ -44,9 +53,10 @@ const english = [
   'Distributed by Happy Foods, 123 Main St',
 ];
 const englishTrimmed = extractIngredientSection(english);
-assert.ok(englishTrimmed.some((l) => l.startsWith('Ingredients')));
-assert.ok(englishTrimmed.some((l) => l.startsWith('Contains')));
-assert.ok(!englishTrimmed.join(' ').includes('Main St'), 'address must be dropped');
+assert.ok(englishTrimmed.ingredients.some((l) => l.startsWith('Ingredients')));
+assert.ok(englishTrimmed.ingredients.some((l) => l.startsWith('Contains')));
+assert.deepEqual(englishTrimmed.advisories, []);
+assert.ok(!englishTrimmed.ingredients.join(' ').includes('Main St'), 'address must be dropped');
 
 // Japanese labels — 内容量 and 賞味期限 end the block just as their Korean twins do
 const japanese = [
@@ -58,13 +68,13 @@ const japanese = [
   '製造者 しあわせ食品 東京都渋谷区1-2-3',
 ];
 const japaneseTrimmed = extractIngredientSection(japanese);
-assert.deepEqual(japaneseTrimmed, ['原材料名: 小麦粉、砂糖、全粉乳、大豆油']);
-assert.ok(!japaneseTrimmed.join(' ').includes('渋谷区'), 'address must be dropped');
+assert.deepEqual(japaneseTrimmed.ingredients, ['原材料名: 小麦粉、砂糖、全粉乳、大豆油']);
+assert.ok(!japaneseTrimmed.ingredients.join(' ').includes('渋谷区'), 'address must be dropped');
 
-// the Japanese advisory survives even though it sits past the section end
+// 含みます is "contains" — direct, not precautionary
 assert.deepEqual(
   extractIngredientSection(['原材料名: 水、砂糖', '内容量 250ml', '本品には乳成分・大豆を含みます']),
-  ['原材料名: 水、砂糖', '本品には乳成分・大豆を含みます']
+  { ingredients: ['原材料名: 水、砂糖', '本品には乳成分・大豆を含みます'], advisories: [] }
 );
 
 // Chinese labels — 配料 opens the block, 净含量 and 保质期 close it
@@ -77,13 +87,13 @@ const chinese = [
   '地址: 上海市浦东新区某某路123号',
 ];
 const chineseTrimmed = extractIngredientSection(chinese);
-assert.deepEqual(chineseTrimmed, ['配料: 小麦粉、白砂糖、全脂奶粉、大豆油']);
-assert.ok(!chineseTrimmed.join(' ').includes('浦东'), 'address must be dropped');
+assert.deepEqual(chineseTrimmed.ingredients, ['配料: 小麦粉、白砂糖、全脂奶粉、大豆油']);
+assert.ok(!chineseTrimmed.ingredients.join(' ').includes('浦东'), 'address must be dropped');
 
-// the Chinese advisory survives even though it sits past the section end
+// 含有 is "contains" — direct
 assert.deepEqual(
   extractIngredientSection(['配料表: 水、白砂糖', '淨含量 250毫升', '過敏原信息: 含有大豆、雞蛋']),
-  ['配料表: 水、白砂糖', '過敏原信息: 含有大豆、雞蛋']
+  { ingredients: ['配料表: 水、白砂糖', '過敏原信息: 含有大豆、雞蛋'], advisories: [] }
 );
 
 // Latin-script labels — Spanish and Italian ride on the English "ingredient",
@@ -96,10 +106,10 @@ const spanish = [
   'Fabricado por Alimentos Felices, Calle Mayor 12, Madrid',
 ];
 const spanishTrimmed = extractIngredientSection(spanish);
-assert.deepEqual(spanishTrimmed, [
+assert.deepEqual(spanishTrimmed.ingredients, [
   'Ingredientes: harina de trigo, azúcar, leche desnatada, aceite de soja',
 ]);
-assert.ok(!spanishTrimmed.join(' ').includes('Madrid'), 'address must be dropped');
+assert.ok(!spanishTrimmed.ingredients.join(' ').includes('Madrid'), 'address must be dropped');
 
 assert.deepEqual(
   extractIngredientSection([
@@ -107,7 +117,7 @@ assert.deepEqual(
     'Ingredienti: farina di grano, zucchero, latte',
     'Peso netto 100 g',
     'Da consumarsi preferibilmente entro il 05/2026',
-  ]),
+  ]).ingredients,
   ['Ingredienti: farina di grano, zucchero, latte']
 );
 
@@ -120,9 +130,15 @@ const french = [
   'Fabriqué par Aliments Heureux, 12 rue Principale, Paris',
 ];
 const frenchTrimmed = extractIngredientSection(french);
-assert.deepEqual(frenchTrimmed, ['Ingrédients: farine de blé, sucre, lait, oeuf']);
-assert.ok(!frenchTrimmed.join(' ').includes('Paris'), 'address must be dropped');
+assert.deepEqual(frenchTrimmed.ingredients, ['Ingrédients: farine de blé, sucre, lait, oeuf']);
+assert.ok(!frenchTrimmed.ingredients.join(' ').includes('Paris'), 'address must be dropped');
 
+// --- genuinely precautionary wording, in every language that has it ---------
+//
+// These are the lines that earn the amber verdict. Each one is a real
+// cross-contact warning, so it must land in `advisories` and nowhere else.
+
+// German "Kann Spuren von ... enthalten"
 assert.deepEqual(
   extractIngredientSection([
     'Schokoladenkekse',
@@ -131,9 +147,13 @@ assert.deepEqual(
     'Mindestens haltbar bis 05/2026',
     'Kann Spuren von Erdnüssen enthalten',
   ]),
-  ['Zutaten: Weizenmehl, Zucker, Milch, Hühnerei', 'Kann Spuren von Erdnüssen enthalten']
+  {
+    ingredients: ['Zutaten: Weizenmehl, Zucker, Milch, Hühnerei'],
+    advisories: ['Kann Spuren von Erdnüssen enthalten'],
+  }
 );
 
+// Vietnamese "có thể chứa"
 assert.deepEqual(
   extractIngredientSection([
     'Bánh quy sô cô la',
@@ -142,18 +162,60 @@ assert.deepEqual(
     'Hạn sử dụng 05/2026',
     'Sản phẩm có thể chứa đậu phộng',
   ]),
-  ['Thành phần: bột mì, đường, sữa, trứng', 'Sản phẩm có thể chứa đậu phộng']
+  {
+    ingredients: ['Thành phần: bột mì, đường, sữa, trứng'],
+    advisories: ['Sản phẩm có thể chứa đậu phộng'],
+  }
+);
+
+// English "may contain"
+assert.deepEqual(
+  extractIngredientSection([
+    'Ingredients: Sugar, Cocoa Butter',
+    'Net Wt 50g',
+    'May contain traces of peanuts and tree nuts',
+  ]).advisories,
+  ['May contain traces of peanuts and tree nuts']
+);
+
+// Japanese shared-line wording
+assert.deepEqual(
+  extractIngredientSection([
+    '原材料名: 砂糖、カカオマス',
+    '内容量 50g',
+    '本製品は落花生と同一製造ラインで製造しています',
+  ]).advisories,
+  ['本製品は落花生と同一製造ラインで製造しています']
+);
+
+// Chinese 可能含有
+assert.deepEqual(
+  extractIngredientSection(['配料: 白砂糖、可可脂', '净含量 50克', '本产品可能含有微量花生']).advisories,
+  ['本产品可能含有微量花生']
+);
+
+// Spanish "puede contener"
+assert.deepEqual(
+  extractIngredientSection([
+    'Ingredientes: azúcar, manteca de cacao',
+    'Peso neto 50 g',
+    'Puede contener trazas de frutos secos',
+  ]).advisories,
+  ['Puede contener trazas de frutos secos']
 );
 
 // multi-line ingredient blocks stay whole
 assert.deepEqual(
-  extractIngredientSection(['원재료명', '밀가루, 설탕,', '전지분유(우유)', '유통기한 별도표기']),
+  extractIngredientSection(['원재료명', '밀가루, 설탕,', '전지분유(우유)', '유통기한 별도표기'])
+    .ingredients,
   ['원재료명', '밀가루, 설탕,', '전지분유(우유)']
 );
 
-// Two advisories, one before the ingredient block and one on the very line that
+// Two notes, one before the ingredient block and one on the very line that
 // ends it. Rescuing the first must not shift the "already kept" window past the
 // second — dropping a line that names an allergen is the one unrecoverable bug.
+// They also land on opposite sides of the split: 같은 시설 is precautionary,
+// 알레르기 유발물질 ... 함유 is a direct declaration.
 const twoAdvisories = extractIngredientSection([
   '본 제품은 대두를 함유한 제품과 같은 시설에서 제조',
   '맛있는 초코쿠키',
@@ -163,18 +225,29 @@ const twoAdvisories = extractIngredientSection([
   '영양성분 열량 500kcal',
 ]);
 assert.ok(
-  twoAdvisories.some((line) => line.includes('우유')),
-  'an advisory on the block-terminating line must survive an earlier advisory'
+  twoAdvisories.ingredients.some((line) => line.includes('우유')),
+  'a direct declaration on the block-terminating line must survive, as an ingredient'
 );
 assert.ok(
-  twoAdvisories.some((line) => line.includes('대두')),
-  'the advisory before the block must survive too'
+  twoAdvisories.advisories.some((line) => line.includes('대두')),
+  'the precautionary note before the block must survive, as an advisory'
 );
-assert.ok(!twoAdvisories.join(' ').includes('영양성분'), 'nutrition must still be dropped');
+assert.ok(
+  !twoAdvisories.ingredients.concat(twoAdvisories.advisories).join(' ').includes('영양성분'),
+  'nutrition must still be dropped'
+);
 
-// fail open: no recognisable header means keep everything
+// fail open: no recognisable header means keep everything, as ingredients —
+// the stronger verdict. Nothing may be demoted on a guess.
 const unrecognised = ['설탕', '우유', '대두'];
-assert.deepEqual(extractIngredientSection(unrecognised), unrecognised);
-assert.deepEqual(extractIngredientSection([]), []);
+assert.deepEqual(extractIngredientSection(unrecognised), {
+  ingredients: unrecognised,
+  advisories: [],
+});
+assert.deepEqual(extractIngredientSection(['본 제품은 우유와 같은 시설에서 제조']), {
+  ingredients: ['본 제품은 우유와 같은 시설에서 제조'],
+  advisories: [],
+});
+assert.deepEqual(extractIngredientSection([]), { ingredients: [], advisories: [] });
 
 console.log('label-text: all checks passed');

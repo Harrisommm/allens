@@ -474,6 +474,46 @@ export function scanAllergenNames(
   ]);
 }
 
+export type ScanVerdict = {
+  /** Allergens named in the ingredient block — the product contains these. */
+  direct: string[];
+  /** Allergens named *only* in a cross-contact warning — a risk, not a fact. */
+  advisory: string[];
+};
+
+/**
+ * The full verdict for one scan, keeping "contains" apart from "may contain".
+ *
+ * A database-backed scanner cannot make this distinction at all: precautionary
+ * labelling is voluntary and unevenly worded, so it simply isn't in product
+ * data. Reading the physical label is the only way to see it, which is why it
+ * is worth the extra field.
+ *
+ * Two rules keep the split from ever weakening a verdict:
+ *  - an allergen in the ingredients is `direct`, even if an advisory repeats
+ *    it — the subtraction below, not a priority guess;
+ *  - a scan with no recorded advisory text (saved before the split, or a label
+ *    that printed none) has nothing demoted, because `advisoryText` is absent
+ *    and everything stays in `direct`.
+ */
+export function scanVerdict(
+  scan: {
+    originalText: string;
+    translatedText: string;
+    advisoryText?: string;
+    translatedAdvisoryText?: string;
+  },
+  allergens: Allergen[]
+): ScanVerdict {
+  const direct = scanAllergenNames(scan, allergens);
+  const advisory = matchedAllergenNames([
+    ...findAllergenMatches(scan.translatedAdvisoryText ?? '', allergens),
+    ...findAllergenMatches(scan.advisoryText ?? '', allergens),
+  ]);
+
+  return { direct, advisory: advisory.filter((name) => !direct.includes(name)) };
+}
+
 /**
  * Splits text into runs for rendering, merging overlapping matches so
  * "soy lecithin" and "soy" don't paint the same characters twice.

@@ -43,11 +43,16 @@ export default function CameraScreen() {
       if (!photo?.uri) throw new Error(PHOTO_FAILED);
 
       setStatus(t.reading);
-      const ingredients = await detectIngredientsAsync(photo.uri);
+      const reading = await detectIngredientsAsync(photo.uri);
 
       setStatus(t.translating);
       const targetLanguage = deviceLanguage();
-      const translated = await translateTextAsync(ingredients, targetLanguage);
+      // One request for both, so the advisory is readable in the user's
+      // language too — it is the half that decides "may contain" vs "contains".
+      const [translated, translatedAdvisory] = await translateTextAsync(
+        [reading.ingredients, reading.advisories],
+        targetLanguage
+      );
 
       // Nothing about the match is stored. Both history screens recompute it
       // from the *current* allergy profile, so switching Milk on later re-flags
@@ -60,8 +65,13 @@ export default function CameraScreen() {
         // we usually photograph just the ingredients panel, where it isn't even
         // printed — so scans are listed by date until renamed from the detail
         // screen.
-        originalText: ingredients,
+        originalText: reading.ingredients,
         translatedText: translated,
+        // Stored only when the label actually printed one. Absent means
+        // "no advisory read", which scanVerdict treats as the stronger verdict.
+        ...(reading.advisories
+          ? { advisoryText: reading.advisories, translatedAdvisoryText: translatedAdvisory }
+          : {}),
         targetLanguage,
         imageUri: photo.uri,
         createdAt: scannedAt.toISOString(),

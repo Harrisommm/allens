@@ -5,6 +5,13 @@ import { extractIngredientSection } from './label-text';
 /** Thrown when OCR read nothing; the screen turns it into localized copy. */
 export const NO_TEXT_FOUND = 'NO_TEXT_FOUND';
 
+export type LabelReading = {
+  /** The ingredient block, one string. */
+  ingredients: string;
+  /** Cross-contact warnings, if the label printed any. Empty string when not. */
+  advisories: string;
+};
+
 /**
  * Each script needs its own model: the Korean one also reads Latin (so Korean
  * and English labels come from that pass), kana needs the Japanese one, and
@@ -22,7 +29,7 @@ const SCRIPTS = [
  * Every model gets a pass and the best read wins. They are independent native
  * calls, so `Promise.all` costs roughly one pass of wall-clock time.
  */
-export async function detectIngredientsAsync(imageUri: string): Promise<string> {
+export async function detectIngredientsAsync(imageUri: string): Promise<LabelReading> {
   const reads = await Promise.all(
     SCRIPTS.map((script) => TextRecognition.recognize(imageUri, script))
   );
@@ -43,7 +50,8 @@ export async function detectIngredientsAsync(imageUri: string): Promise<string> 
     throw new Error(NO_TEXT_FOUND);
   }
 
-  // Ingredients only — the brand, address, phone number and nutrition table
-  // are noise that produce false matches and clutter the saved scan.
-  return extractIngredientSection(lines).join(' ');
+  // Ingredients and advisories only — the brand, address, phone number and
+  // nutrition table are noise that produce false matches and clutter the scan.
+  const { ingredients, advisories } = extractIngredientSection(lines);
+  return { ingredients: ingredients.join(' '), advisories: advisories.join(' ') };
 }

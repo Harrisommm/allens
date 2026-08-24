@@ -11,6 +11,7 @@ import {
   findAllergenMatches,
   matchedAllergenNames,
   scanAllergenNames,
+  scanVerdict,
   searchAllergens,
   splitByMatches,
   type Allergen,
@@ -64,6 +65,76 @@ assert.deepEqual(
 assert.deepEqual(
   scanAllergenNames({ originalText: 'Water, Sugar', translatedText: '정제수, 설탕' }, allergens),
   []
+);
+
+// --- contains vs. may contain ----------------------------------------------
+//
+// The distinction no database-backed scanner can make, so it has to be right
+// here. The failure that matters is a downgrade: showing amber "may contain"
+// for an allergen the label plainly lists as an ingredient.
+
+// named only in the advisory -> advisory, not direct
+assert.deepEqual(
+  scanVerdict(
+    {
+      originalText: '원재료명: 정제수, 설탕',
+      translatedText: 'Ingredients: water, sugar',
+      advisoryText: '본 제품은 우유와 같은 시설에서 제조',
+      translatedAdvisoryText: 'Made in a facility that also processes milk',
+    },
+    allergens
+  ),
+  { direct: [], advisory: ['Milk'] }
+);
+
+// named in the ingredients -> direct, and the advisory list stays empty
+assert.deepEqual(
+  scanVerdict(
+    { originalText: '원재료명: 우유', translatedText: 'Ingredients: milk' },
+    allergens
+  ),
+  { direct: ['Milk'], advisory: [] }
+);
+
+// named in BOTH -> direct wins outright; it must never appear as "may contain"
+assert.deepEqual(
+  scanVerdict(
+    {
+      originalText: '원재료명: 우유, 설탕',
+      translatedText: 'Ingredients: milk, sugar',
+      advisoryText: '대두, 우유 혼입 가능',
+      translatedAdvisoryText: 'May contain soy and milk',
+    },
+    allergens
+  ),
+  { direct: ['Milk'], advisory: ['Soy'] }
+);
+
+// a scan saved before the split has no advisory text at all: everything it
+// names stays direct, so an old scan can never be softened by the new code
+assert.deepEqual(
+  scanVerdict(
+    {
+      originalText: '원재료명: 정제수 알레르기 유발물질: 우유 함유',
+      translatedText: 'Ingredients: water. Contains milk.',
+    },
+    allergens
+  ),
+  { direct: ['Milk'], advisory: [] }
+);
+
+// nothing anywhere -> clean on both counts
+assert.deepEqual(
+  scanVerdict(
+    {
+      originalText: 'Water, Sugar',
+      translatedText: '정제수, 설탕',
+      advisoryText: 'May contain traces of nothing relevant',
+      translatedAdvisoryText: '해당 없음',
+    },
+    allergens
+  ),
+  { direct: [], advisory: [] }
 );
 
 // --- the shipped alias table ----------------------------------------------

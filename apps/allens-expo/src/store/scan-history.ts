@@ -11,6 +11,16 @@ export type ScanHistoryItem = {
   title?: string;
   originalText: string;
   translatedText: string;
+  /**
+   * Cross-contact warning text, kept apart from the ingredients so an allergen
+   * that is only *possibly* present is never shown as one that is.
+   *
+   * Absent on scans saved before the split, and on labels that printed no
+   * advisory. Absent means "unknown", which is judged as ingredients — the
+   * stronger verdict — not as a clean advisory.
+   */
+  advisoryText?: string;
+  translatedAdvisoryText?: string;
   /** Language `translatedText` was translated into. Absent on scans saved before it was recorded. */
   targetLanguage?: string;
   imageUri?: string;

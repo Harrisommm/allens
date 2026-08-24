@@ -12,8 +12,16 @@ import { uiLanguageFrom, type UiLanguage } from './strings';
  */
 const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY;
 
-export async function translateTextAsync(text: string, target: string): Promise<string> {
-  if (!API_KEY || !text.trim()) return text;
+/**
+ * Translates several strings in one request — `q` repeats, and the response
+ * comes back in the same order. A label is read as an ingredient block plus an
+ * optional cross-contact advisory, and both have to be readable, so batching
+ * keeps that at one network round trip instead of two.
+ *
+ * Returns the input unchanged on any failure, so a scan is never lost.
+ */
+export async function translateTextAsync(texts: string[], target: string): Promise<string[]> {
+  if (!API_KEY || !texts.some((text) => text.trim())) return texts;
 
   try {
     const response = await fetch(
@@ -21,16 +29,20 @@ export async function translateTextAsync(text: string, target: string): Promise<
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ q: text, target, format: 'text' }),
+        body: JSON.stringify({ q: texts, target, format: 'text' }),
       }
     );
 
-    if (!response.ok) return text;
+    if (!response.ok) return texts;
     const json = await response.json();
-    return json?.data?.translations?.[0]?.translatedText ?? text;
+    const translations = json?.data?.translations;
+    // A short or reordered response would silently pair an advisory with the
+    // ingredient text, so anything but an exact match is treated as a failure.
+    if (!Array.isArray(translations) || translations.length !== texts.length) return texts;
+    return translations.map((entry, index) => entry?.translatedText ?? texts[index]);
   } catch {
     // A failed translation must never lose the scan.
-    return text;
+    return texts;
   }
 }
 
